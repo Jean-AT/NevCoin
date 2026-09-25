@@ -10,6 +10,15 @@
 - A chat ID outside `TELEGRAM_ALLOWED_CHAT_IDS` cannot execute commands and creates a security log entry.
 - Tokens and database credentials are supplied through configuration and do not appear in source code or logs.
 
+## Telegram Milestone
+
+- Long polling is disabled unless `TELEGRAM_ENABLED=true`.
+- Enabling Telegram without a bot token or allowlisted chat ID fails fast during startup.
+- `/status`, `/health`, and `/help` return structured English responses through application services.
+- Commands may include a bot mention, such as `/health@nevcoin_bot`.
+- Unauthorized chat IDs receive no response and are security logged.
+- Telegram API errors retry with a bounded backoff and never expose the bot token in logs.
+
 ## Intelligence Capabilities
 
 - Token discovery uses configurable thresholds and emits candidates with reasons and timestamps.

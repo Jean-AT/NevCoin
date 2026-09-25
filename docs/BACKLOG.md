@@ -9,10 +9,10 @@
 
 ## EPIC 1 — Telegram (P0)
 
-- [ ] Add `NotificationPort` and an HTTP Telegram adapter using long polling.
-- [ ] Add `TELEGRAM_BOT_TOKEN` and `TELEGRAM_ALLOWED_CHAT_IDS` configuration.
-- [ ] Implement `/status`, `/health`, and `/help` through application use cases.
-- [ ] Ignore and security-log unauthorized chat IDs.
+- [x] Add `NotificationPort` and an HTTP Telegram adapter using long polling.
+- [x] Add `TELEGRAM_BOT_TOKEN` and `TELEGRAM_ALLOWED_CHAT_IDS` configuration.
+- [x] Implement `/status`, `/health`, and `/help` through application use cases.
+- [x] Ignore and security-log unauthorized chat IDs.
 
 ## EPIC 2 — Market Intelligence (P0)
 
