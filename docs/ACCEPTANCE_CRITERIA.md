@@ -19,6 +19,16 @@
 - Unauthorized chat IDs receive no response and are security logged.
 - Telegram API errors retry with a bounded backoff and never expose the bot token in logs.
 
+## Market Intelligence First Slice
+
+- `MarketDataProvider` hides Birdeye-specific HTTP details from the market domain.
+- Market polling is disabled unless `MARKET_ENABLED=true`; enabled ingestion requires `BIRDEYE_API_KEY` and configured `MARKET_WATCH_MINTS`.
+- Each provider response records token address, source and observed timestamps, price, liquidity, aggregate volume, price movement, and freshness.
+- PostgreSQL migrations create market ticks, snapshots, signals, and signal evidence tables.
+- Configurable momentum, volume-spike, and liquidity-drop rules emit descriptive signals only; no BUY or SELL decision is produced.
+- Configured Telegram alert chats receive signal evidence only when `MARKET_ALERTS_ENABLED=true`.
+- WebSocket ingestion, trade-level buyer/seller pressure, and unique trader metrics remain follow-up work for the streaming slice.
+
 ## Intelligence Capabilities
 
 - Token discovery uses configurable thresholds and emits candidates with reasons and timestamps.

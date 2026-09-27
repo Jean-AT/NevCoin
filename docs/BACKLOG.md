@@ -16,10 +16,12 @@
 
 ## EPIC 2 — Market Intelligence (P0)
 
-- [ ] Define `MarketDataProvider` and integrate Birdeye behind the port.
-- [ ] Normalize price, volume, liquidity, buyer/seller pressure, and freshness.
-- [ ] Persist market ticks and snapshots and emit descriptive signals.
-- [ ] Send structured Telegram alerts with evidence and timestamps.
+- [x] Define `MarketDataProvider` and integrate Birdeye behind the port.
+- [x] Normalize price, aggregate volume, liquidity, price movement, and freshness.
+- [x] Persist market ticks and snapshots and emit descriptive signals.
+- [x] Send structured Telegram alerts with evidence and timestamps.
+- [ ] Replace overview polling with streaming/WebSocket ingestion.
+- [ ] Add trade-level buyer/seller pressure and unique trader metrics.
 
 ## EPIC 3 — Token Discovery (P0)
 
