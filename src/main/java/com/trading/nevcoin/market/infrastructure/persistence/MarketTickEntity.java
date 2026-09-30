@@ -32,6 +32,16 @@ public class MarketTickEntity {
     private BigDecimal priceChange24hPercent;
     @Column(nullable = false)
     private String sourceQuality;
+    @Column(precision = 30, scale = 12)
+    private BigDecimal buyVolume5m;
+    @Column(precision = 30, scale = 12)
+    private BigDecimal sellVolume5m;
+    @Column(precision = 30, scale = 12)
+    private BigDecimal netFlow5m;
+    @Column(nullable = false)
+    private int uniqueBuyers5m;
+    @Column(nullable = false)
+    private int uniqueSellers5m;
 
     protected MarketTickEntity() {
     }
@@ -46,10 +56,16 @@ public class MarketTickEntity {
         this.volume24hUsd = tick.volume24hUsd();
         this.priceChange24hPercent = tick.priceChange24hPercent();
         this.sourceQuality = tick.sourceQuality();
+        this.buyVolume5m = tick.buyVolume5m();
+        this.sellVolume5m = tick.sellVolume5m();
+        this.netFlow5m = tick.netFlow5m();
+        this.uniqueBuyers5m = tick.uniqueBuyers5m();
+        this.uniqueSellers5m = tick.uniqueSellers5m();
     }
 
     public MarketTick toDomain() {
         return new MarketTick(tokenAddress, observedAt, sourceTimestamp, priceUsd, liquidityUsd, volume24hUsd,
-                priceChange24hPercent, sourceQuality);
+                priceChange24hPercent, sourceQuality, buyVolume5m, sellVolume5m, netFlow5m,
+                uniqueBuyers5m, uniqueSellers5m);
     }
 }

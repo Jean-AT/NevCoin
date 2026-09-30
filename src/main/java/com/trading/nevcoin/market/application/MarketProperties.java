@@ -12,8 +12,11 @@ public class MarketProperties {
 
     private boolean enabled;
     private long pollIntervalMs = 30_000;
-    private String birdeyeApiKey = "";
-    private String birdeyeBaseUrl = "https://public-api.birdeye.so";
+    private boolean streamEnabled;
+    private String streamUrl = "wss://mainnet.helius-rpc.com";
+    private String streamChannel = "logsSubscribe";
+    private long streamReconnectDelaySeconds = 5;
+    private String heliusApiKey = "";
     private String chain = "solana";
     private String watchMints = "";
     private boolean alertsEnabled;
@@ -42,8 +45,11 @@ public class MarketProperties {
 
     public boolean isEnabled() { return enabled; }
     public long getPollIntervalMs() { return pollIntervalMs; }
-    public String getBirdeyeApiKey() { return birdeyeApiKey; }
-    public String getBirdeyeBaseUrl() { return birdeyeBaseUrl; }
+    public boolean isStreamEnabled() { return streamEnabled; }
+    public String getStreamUrl() { return streamUrl; }
+    public String getStreamChannel() { return streamChannel; }
+    public long getStreamReconnectDelaySeconds() { return streamReconnectDelaySeconds; }
+    public String getHeliusApiKey() { return heliusApiKey; }
     public String getChain() { return chain; }
     public boolean isAlertsEnabled() { return alertsEnabled; }
     public BigDecimal getMomentumThresholdPercent() { return momentumThresholdPercent; }
@@ -52,8 +58,11 @@ public class MarketProperties {
 
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
     public void setPollIntervalMs(long pollIntervalMs) { this.pollIntervalMs = pollIntervalMs; }
-    public void setBirdeyeApiKey(String birdeyeApiKey) { this.birdeyeApiKey = birdeyeApiKey; }
-    public void setBirdeyeBaseUrl(String birdeyeBaseUrl) { this.birdeyeBaseUrl = birdeyeBaseUrl; }
+    public void setStreamEnabled(boolean streamEnabled) { this.streamEnabled = streamEnabled; }
+    public void setStreamUrl(String streamUrl) { this.streamUrl = streamUrl; }
+    public void setStreamChannel(String streamChannel) { this.streamChannel = streamChannel; }
+    public void setStreamReconnectDelaySeconds(long streamReconnectDelaySeconds) { this.streamReconnectDelaySeconds = streamReconnectDelaySeconds; }
+    public void setHeliusApiKey(String heliusApiKey) { this.heliusApiKey = heliusApiKey; }
     public void setChain(String chain) { this.chain = chain; }
     public void setWatchMints(String watchMints) { this.watchMints = watchMints; }
     public void setAlertsEnabled(boolean alertsEnabled) { this.alertsEnabled = alertsEnabled; }

@@ -36,6 +36,16 @@ public class MarketSnapshotEntity {
     private BigDecimal volatility5m;
     @Column(nullable = false)
     private long dataFreshnessMs;
+    @Column(precision = 30, scale = 12)
+    private BigDecimal buyVolume5m;
+    @Column(precision = 30, scale = 12)
+    private BigDecimal sellVolume5m;
+    @Column(precision = 30, scale = 12)
+    private BigDecimal netFlow5m;
+    @Column(nullable = false)
+    private int uniqueBuyers5m;
+    @Column(nullable = false)
+    private int uniqueSellers5m;
 
     protected MarketSnapshotEntity() {
     }
@@ -52,5 +62,10 @@ public class MarketSnapshotEntity {
         this.priceChange15m = snapshot.priceChange15m();
         this.volatility5m = snapshot.volatility5m();
         this.dataFreshnessMs = snapshot.dataFreshnessMs();
+        this.buyVolume5m = snapshot.buyVolume5m();
+        this.sellVolume5m = snapshot.sellVolume5m();
+        this.netFlow5m = snapshot.netFlow5m();
+        this.uniqueBuyers5m = snapshot.uniqueBuyers5m();
+        this.uniqueSellers5m = snapshot.uniqueSellers5m();
     }
 }

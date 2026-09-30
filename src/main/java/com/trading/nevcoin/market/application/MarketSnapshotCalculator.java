@@ -30,7 +30,12 @@ public class MarketSnapshotCalculator {
                 priceChange5m,
                 priceChange15m,
                 volatility5m,
-                freshness);
+                freshness,
+                current.buyVolume5m(),
+                current.sellVolume5m(),
+                current.netFlow5m(),
+                current.uniqueBuyers5m(),
+                current.uniqueSellers5m());
     }
 
     private BigDecimal priceChangeAt(MarketTick current, List<MarketTick> previousTicks, Duration window) {
