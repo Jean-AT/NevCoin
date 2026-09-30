@@ -1,53 +1,55 @@
 # Backlog Tickets
 
+> Estado de tickets: `COMPLETADO` = implementado y marcado con `[x]`; `INCOMPLETO` = pendiente y marcado con `[ ]`.
+
 ## EPIC 0 — Foundation (P0)
 
-- [x] Upgrade the Maven baseline to Java 21 and establish bounded-context packages.
-- [x] Add PostgreSQL configuration with profiles and Flyway migrations.
-- [x] Add `.env.example`, Actuator health/readiness, and Micrometer metrics.
-- [x] Add base Spring context and Testcontainers PostgreSQL test setup.
+- [x] **COMPLETADO** — Upgrade the Maven baseline to Java 21 and establish bounded-context packages.
+- [x] **COMPLETADO** — Add PostgreSQL configuration with profiles and Flyway migrations.
+- [x] **COMPLETADO** — Add `.env.example`, Actuator health/readiness, and Micrometer metrics.
+- [x] **COMPLETADO** — Add base Spring context and Testcontainers PostgreSQL test setup.
 
 ## EPIC 1 — Telegram (P0)
 
-- [x] Add `NotificationPort` and an HTTP Telegram adapter using long polling.
-- [x] Add `TELEGRAM_BOT_TOKEN` and `TELEGRAM_ALLOWED_CHAT_IDS` configuration.
-- [x] Implement `/status`, `/health`, and `/help` through application use cases.
-- [x] Ignore and security-log unauthorized chat IDs.
+- [x] **COMPLETADO** — Add `NotificationPort` and an HTTP Telegram adapter using long polling.
+- [x] **COMPLETADO** — Add `TELEGRAM_BOT_TOKEN` and `TELEGRAM_ALLOWED_CHAT_IDS` configuration.
+- [x] **COMPLETADO** — Implement `/status`, `/health`, and `/help` through application use cases.
+- [x] **COMPLETADO** — Ignore and security-log unauthorized chat IDs.
 
 ## EPIC 2 — Market Intelligence (P0)
 
-- [x] Define `MarketDataProvider` and integrate Birdeye behind the port.
-- [x] Normalize price, aggregate volume, liquidity, price movement, and freshness.
-- [x] Persist market ticks and snapshots and emit descriptive signals.
-- [x] Send structured Telegram alerts with evidence and timestamps.
-- [ ] Replace overview polling with streaming/WebSocket ingestion.
-- [ ] Add trade-level buyer/seller pressure and unique trader metrics.
+- [x] **COMPLETADO** — Define `MarketDataProvider` behind the provider port; Helius is the selected market source.
+- [x] **COMPLETADO** — Normalize price, aggregate volume, liquidity, price movement, and freshness.
+- [x] **COMPLETADO** — Persist market ticks and snapshots and emit descriptive signals.
+- [x] **COMPLETADO** — Send structured Telegram alerts with evidence and timestamps.
+- [x] **COMPLETADO** — Replace overview polling with streaming/WebSocket ingestion.
+- [x] **COMPLETADO** — Add trade-level buyer/seller pressure and unique trader metrics.
 
 ## EPIC 3 — Token Discovery (P0)
 
-- [ ] Define configurable candidate filters and eligibility scoring.
-- [ ] Add token watchlist persistence and `/tokens` and `/token` queries.
+- [x] **COMPLETADO** — Define configurable candidate filters and eligibility scoring.
+- [x] **COMPLETADO** — Add token watchlist persistence and `/tokens`, `/token`, `/watch-token`, and `/unwatch-token` commands.
 
 ## EPIC 4 — Wallet Intelligence (P0)
 
-- [ ] Define wallet provider ports and integrate Helius transaction data.
-- [ ] Detect swaps, reconstruct observable positions, and calculate sample-aware profiles.
-- [ ] Add wallet registry, queries, and alerts.
+- [ ] **INCOMPLETO** — Define wallet provider ports and integrate Helius transaction data.
+- [ ] **INCOMPLETO** — Detect swaps, reconstruct observable positions, and calculate sample-aware profiles.
+- [ ] **INCOMPLETO** — Add wallet registry, queries, and alerts.
 
 ## EPIC 5 — Social Intelligence (P1)
 
-- [ ] Add configurable social sources, polling/streaming, deduplication, and token association.
-- [ ] Persist social events and expose `/social` plus alerts.
+- [ ] **INCOMPLETO** — Add configurable social sources, polling/streaming, deduplication, and token association.
+- [ ] **INCOMPLETO** — Persist social events and expose `/social` plus alerts.
 
 ## EPIC 6 — Signal Intelligence (P1)
 
-- [ ] Correlate market, wallet, and social evidence by token and time window.
-- [ ] Add freshness, confidence, priority, evidence, `/signals`, and cross-signal alerts.
+- [ ] **INCOMPLETO** — Correlate market, wallet, and social evidence by token and time window.
+- [ ] **INCOMPLETO** — Add freshness, confidence, priority, evidence, `/signals`, and cross-signal alerts.
 
 ## EPIC 7 — Historical Replay (P1)
 
-- [ ] Store provider events, snapshots, processing failures, and post-signal outcomes.
-- [ ] Add replay and dataset export without look-ahead bias.
+- [ ] **INCOMPLETO** — Store provider events, snapshots, processing failures, and post-signal outcomes.
+- [ ] **INCOMPLETO** — Add replay and dataset export without look-ahead bias.
 
 ## EPICS 8–10 — Deferred
 

@@ -21,17 +21,21 @@
 
 ## Market Intelligence First Slice
 
-- `MarketDataProvider` hides Birdeye-specific HTTP details from the market domain.
-- Market polling is disabled unless `MARKET_ENABLED=true`; enabled ingestion requires `BIRDEYE_API_KEY` and configured `MARKET_WATCH_MINTS`.
+- `MarketDataProvider` hides provider-specific HTTP details from the market domain.
+- Market polling is disabled unless `MARKET_ENABLED=true`; Helius ingestion requires `HELIUS_API_KEY` and configured `MARKET_WATCH_MINTS`.
 - Each provider response records token address, source and observed timestamps, price, liquidity, aggregate volume, price movement, and freshness.
 - PostgreSQL migrations create market ticks, snapshots, signals, and signal evidence tables.
 - Configurable momentum, volume-spike, and liquidity-drop rules emit descriptive signals only; no BUY or SELL decision is produced.
 - Configured Telegram alert chats receive signal evidence only when `MARKET_ALERTS_ENABLED=true`.
-- WebSocket ingestion, trade-level buyer/seller pressure, and unique trader metrics remain follow-up work for the streaming slice.
+- When `MARKET_STREAM_ENABLED=true`, the Helius trade WebSocket starts for configured watch mints and overview polling is disabled.
+- Stream disconnects are logged and retried with the configured bounded delay; disabling the stream keeps the overview polling fallback available.
+- Trade-level metrics aggregate a five-minute window with BUY volume, SELL volume, net flow, unique buyers, and unique sellers.
+- Stream-derived market data is persisted in ticks and snapshots and remains descriptive intelligence only; no BUY or SELL decision is produced.
 
 ## Intelligence Capabilities
 
-- Token discovery uses configurable thresholds and emits candidates with reasons and timestamps.
+- Token discovery uses configurable thresholds and emits candidates with reasons, scores, timestamps, and expiry.
+- The token watchlist is persisted and Telegram supports `/tokens`, `/token`, `/watch-token`, and `/unwatch-token`.
 - Market data records price, volume, liquidity, pressure, freshness, and source quality without issuing BUY or SELL decisions.
 - Wallet analytics distinguish tracked wallets from smart-wallet conclusions and require sufficient sample size.
 - Social events record source, publication time, detection time, hashes, related tokens, and confidence.

@@ -6,7 +6,7 @@ Target Java 21 and use four spaces for indentation. Use `PascalCase` for types, 
 
 ## Architecture
 
-Organize code by bounded context: discovery, market, wallet, social, signal, history, notification, and shared. Keep domain rules independent of Spring, Telegram, PostgreSQL, HTTP, WebSocket, and provider SDKs. Hide Helius, Birdeye, Solana, and social integrations behind ports. Do not leak provider DTOs into domain models.
+Organize code by bounded context: discovery, market, wallet, social, signal, history, notification, and shared. Keep domain rules independent of Spring, Telegram, PostgreSQL, HTTP, WebSocket, and provider SDKs. Hide Helius, Solana, and social integrations behind ports. Do not leak provider DTOs into domain models.
 
 ## Reliability and Observability
 
