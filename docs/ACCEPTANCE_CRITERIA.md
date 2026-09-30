@@ -36,6 +36,8 @@
 
 - Token discovery uses configurable thresholds and emits candidates with reasons, scores, timestamps, and expiry.
 - The token watchlist is persisted and Telegram supports `/tokens`, `/token`, `/watch-token`, and `/unwatch-token`.
+- Wallet activity is accessed through a provider port and Helius standard RPC normalizes recent transactions and token balance changes.
+- Wallets are persisted in a registry, swaps require both token balance directions, positions remain observable balances, and profiles expose confidence based on sample size.
 - Market data records price, volume, liquidity, pressure, freshness, and source quality without issuing BUY or SELL decisions.
 - Wallet analytics distinguish tracked wallets from smart-wallet conclusions and require sufficient sample size.
 - Social events record source, publication time, detection time, hashes, related tokens, and confidence.

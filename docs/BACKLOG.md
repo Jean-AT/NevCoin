@@ -32,9 +32,9 @@
 
 ## EPIC 4 — Wallet Intelligence (P0)
 
-- [ ] **INCOMPLETO** — Define wallet provider ports and integrate Helius transaction data.
-- [ ] **INCOMPLETO** — Detect swaps, reconstruct observable positions, and calculate sample-aware profiles.
-- [ ] **INCOMPLETO** — Add wallet registry, queries, and alerts.
+- [x] **COMPLETADO** — Define wallet provider ports and integrate Helius transaction data through standard RPC.
+- [x] **COMPLETADO** — Detect swaps, reconstruct observable positions, and calculate sample-aware profiles.
+- [x] **COMPLETADO** — Add wallet registry and query/management ports; alert polling remains bounded and descriptive.
 
 ## EPIC 5 — Social Intelligence (P1)
 

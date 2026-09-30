@@ -3,6 +3,8 @@ package com.trading.nevcoin.notification.application;
 import com.trading.nevcoin.notification.application.ports.SystemStatusPort;
 import com.trading.nevcoin.notification.application.ports.TokenQueryPort;
 import com.trading.nevcoin.notification.application.ports.TokenWatchlistCommandPort;
+import com.trading.nevcoin.notification.application.ports.WalletQueryPort;
+import com.trading.nevcoin.notification.application.ports.WalletWatchlistCommandPort;
 import com.trading.nevcoin.notification.domain.TelegramAccessPolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,6 +28,10 @@ public class TelegramCommandHandler {
             /token <mint|symbol> - show a watched token
             /watch-token <mint> - add a token to the watchlist
             /unwatch-token <mint> - remove a token from the watchlist
+            /wallets - list tracked wallets
+            /wallet <address> - show a tracked wallet
+            /watch-wallet <address> - track a wallet
+            /unwatch-wallet <address> - stop tracking a wallet
 
             NevCoin is paper intelligence only. Trading commands are disabled.
             """;
@@ -34,6 +40,8 @@ public class TelegramCommandHandler {
     private final SystemStatusPort systemStatusPort;
     private final TokenQueryPort tokenQueryPort;
     private final TokenWatchlistCommandPort tokenWatchlistCommandPort;
+    private final WalletQueryPort walletQueryPort;
+    private final WalletWatchlistCommandPort walletWatchlistCommandPort;
 
     public TelegramCommandHandler(TelegramAccessPolicy accessPolicy, SystemStatusPort systemStatusPort) {
         this(accessPolicy, systemStatusPort, new TokenQueryPort() {
@@ -42,6 +50,12 @@ public class TelegramCommandHandler {
         }, new TokenWatchlistCommandPort() {
             @Override public void watch(String mintAddress) { }
             @Override public void unwatch(String mintAddress) { }
+        }, new WalletQueryPort() {
+            @Override public java.util.List<WalletQueryPort.WalletSummary> list() { return java.util.List.of(); }
+            @Override public WalletQueryPort.WalletSummary find(String address) { return null; }
+        }, new WalletWatchlistCommandPort() {
+            @Override public void watch(String address) { }
+            @Override public void unwatch(String address) { }
         });
     }
 
@@ -50,11 +64,15 @@ public class TelegramCommandHandler {
             TelegramAccessPolicy accessPolicy,
             SystemStatusPort systemStatusPort,
             TokenQueryPort tokenQueryPort,
-            TokenWatchlistCommandPort tokenWatchlistCommandPort) {
+            TokenWatchlistCommandPort tokenWatchlistCommandPort,
+            WalletQueryPort walletQueryPort,
+            WalletWatchlistCommandPort walletWatchlistCommandPort) {
         this.accessPolicy = accessPolicy;
         this.systemStatusPort = systemStatusPort;
         this.tokenQueryPort = tokenQueryPort;
         this.tokenWatchlistCommandPort = tokenWatchlistCommandPort;
+        this.walletQueryPort = walletQueryPort;
+        this.walletWatchlistCommandPort = walletWatchlistCommandPort;
     }
 
     public Optional<String> handle(long chatId, String text) {
@@ -73,6 +91,10 @@ public class TelegramCommandHandler {
             case "/token" -> Optional.of(tokenMessage(argument(parts)));
             case "/watch-token" -> Optional.of(watchToken(argument(parts)));
             case "/unwatch-token" -> Optional.of(unwatchToken(argument(parts)));
+            case "/wallets" -> Optional.of(walletsMessage());
+            case "/wallet" -> Optional.of(walletMessage(argument(parts)));
+            case "/watch-wallet" -> Optional.of(watchWallet(argument(parts)));
+            case "/unwatch-wallet" -> Optional.of(unwatchWallet(argument(parts)));
             case "" -> Optional.of("Use /help to list available commands.");
             default -> Optional.of("Unknown command.\n\n" + HELP_MESSAGE);
         };
@@ -130,4 +152,29 @@ public class TelegramCommandHandler {
 
     private String argument(String[] parts) { return parts.length < 2 ? "" : parts[1]; }
     private String value(String value) { return value == null ? "-" : value; }
+
+    private String walletsMessage() {
+        var wallets = walletQueryPort.list();
+        if (wallets.isEmpty()) return "No tracked wallets.";
+        return "Tracked wallets\n" + wallets.stream().map(wallet -> "- %s [%s]".formatted(wallet.address(), wallet.status()))
+                .collect(java.util.stream.Collectors.joining("\n"));
+    }
+
+    private String walletMessage(String address) {
+        if (address.isBlank()) return "Usage: /wallet <address>";
+        var wallet = walletQueryPort.find(address);
+        return wallet == null ? "Wallet is not tracked." : "Wallet\nAddress: %s\nStatus: %s".formatted(wallet.address(), wallet.status());
+    }
+
+    private String watchWallet(String address) {
+        if (address.isBlank()) return "Usage: /watch-wallet <address>";
+        try { walletWatchlistCommandPort.watch(address); return "Wallet added: " + address; }
+        catch (IllegalArgumentException exception) { return "Invalid wallet: " + exception.getMessage(); }
+    }
+
+    private String unwatchWallet(String address) {
+        if (address.isBlank()) return "Usage: /unwatch-wallet <address>";
+        try { walletWatchlistCommandPort.unwatch(address); return "Wallet removed: " + address; }
+        catch (IllegalArgumentException exception) { return "Invalid wallet: " + exception.getMessage(); }
+    }
 }
