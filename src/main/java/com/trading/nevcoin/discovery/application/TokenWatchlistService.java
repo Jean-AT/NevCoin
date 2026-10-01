@@ -9,9 +9,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.regex.Pattern;
 
 @Service
 public class TokenWatchlistService implements TokenQueryPort, TokenWatchlistCommandPort {
+
+    private static final Pattern SOLANA_MINT = Pattern.compile("[1-9A-HJ-NP-Za-km-z]{32,44}");
 
     private final TokenWatchlistStore store;
 
@@ -22,6 +25,17 @@ public class TokenWatchlistService implements TokenQueryPort, TokenWatchlistComm
     @Transactional
     public Token watch(String mintAddress, String symbol, String name) {
         String normalizedMint = requireMint(mintAddress);
+        Token existing = store.findByMintAddress(normalizedMint).orElse(null);
+        if (existing != null) {
+            return store.save(new Token(
+                    existing.mintAddress(),
+                    firstPresent(symbol, existing.symbol()),
+                    firstPresent(name, existing.name()),
+                    existing.decimals(),
+                    existing.createdAt(),
+                    existing.firstSeenAt(),
+                    Token.Status.ACTIVE));
+        }
         return store.save(new Token(normalizedMint, blankAsNull(symbol), blankAsNull(name), 0,
                 null, Instant.now(), Token.Status.ACTIVE));
     }
@@ -29,9 +43,23 @@ public class TokenWatchlistService implements TokenQueryPort, TokenWatchlistComm
     @Override
     public void watch(String mintAddress) { watch(mintAddress, null, null); }
 
+    @Override
+    @Transactional
+    public void updateMetadata(String mintAddress, String symbol, String name) {
+        String normalizedMint = requireMint(mintAddress);
+        store.findByMintAddress(normalizedMint).ifPresent(existing -> store.save(new Token(
+                existing.mintAddress(),
+                firstPresent(symbol, existing.symbol()),
+                firstPresent(name, existing.name()),
+                existing.decimals(),
+                existing.createdAt(),
+                existing.firstSeenAt(),
+                existing.status())));
+    }
+
     @Transactional
     public void unwatch(String mintAddress) {
-        store.delete(requireMint(mintAddress));
+        store.delete(requireStoredMint(mintAddress));
     }
 
     @Override
@@ -57,11 +85,23 @@ public class TokenWatchlistService implements TokenQueryPort, TokenWatchlistComm
     }
 
     private String requireMint(String value) {
+        if (value == null || !SOLANA_MINT.matcher(value.trim()).matches()) {
+            throw new IllegalArgumentException("A valid Solana Base58 mint address is required");
+        }
+        return value.trim();
+    }
+
+    private String requireStoredMint(String value) {
         if (value == null || value.isBlank() || value.length() > 100 || value.chars().anyMatch(Character::isWhitespace)) {
-            throw new IllegalArgumentException("A valid token mint address is required");
+            throw new IllegalArgumentException("A stored token mint address is required");
         }
         return value.trim();
     }
 
     private String blankAsNull(String value) { return value == null || value.isBlank() ? null : value.trim(); }
+
+    private String firstPresent(String preferred, String fallback) {
+        String normalized = blankAsNull(preferred);
+        return normalized == null ? fallback : normalized;
+    }
 }

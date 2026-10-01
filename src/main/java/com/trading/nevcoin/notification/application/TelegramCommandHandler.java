@@ -1,6 +1,7 @@
 package com.trading.nevcoin.notification.application;
 
 import com.trading.nevcoin.notification.application.ports.SystemStatusPort;
+import com.trading.nevcoin.notification.application.ports.TokenMarketDataPort;
 import com.trading.nevcoin.notification.application.ports.TokenQueryPort;
 import com.trading.nevcoin.notification.application.ports.TokenWatchlistCommandPort;
 import com.trading.nevcoin.notification.application.ports.WalletQueryPort;
@@ -11,6 +12,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.text.NumberFormat;
+import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 import java.util.Optional;
 
@@ -39,6 +44,7 @@ public class TelegramCommandHandler {
     private final TelegramAccessPolicy accessPolicy;
     private final SystemStatusPort systemStatusPort;
     private final TokenQueryPort tokenQueryPort;
+    private final TokenMarketDataPort tokenMarketDataPort;
     private final TokenWatchlistCommandPort tokenWatchlistCommandPort;
     private final WalletQueryPort walletQueryPort;
     private final WalletWatchlistCommandPort walletWatchlistCommandPort;
@@ -47,8 +53,9 @@ public class TelegramCommandHandler {
         this(accessPolicy, systemStatusPort, new TokenQueryPort() {
             @Override public java.util.List<TokenQueryPort.TokenSummary> list() { return java.util.List.of(); }
             @Override public TokenQueryPort.TokenSummary find(String query) { return null; }
-        }, new TokenWatchlistCommandPort() {
+        }, mintAddress -> Optional.empty(), new TokenWatchlistCommandPort() {
             @Override public void watch(String mintAddress) { }
+            @Override public void updateMetadata(String mintAddress, String symbol, String name) { }
             @Override public void unwatch(String mintAddress) { }
         }, new WalletQueryPort() {
             @Override public java.util.List<WalletQueryPort.WalletSummary> list() { return java.util.List.of(); }
@@ -64,12 +71,14 @@ public class TelegramCommandHandler {
             TelegramAccessPolicy accessPolicy,
             SystemStatusPort systemStatusPort,
             TokenQueryPort tokenQueryPort,
+            TokenMarketDataPort tokenMarketDataPort,
             TokenWatchlistCommandPort tokenWatchlistCommandPort,
             WalletQueryPort walletQueryPort,
             WalletWatchlistCommandPort walletWatchlistCommandPort) {
         this.accessPolicy = accessPolicy;
         this.systemStatusPort = systemStatusPort;
         this.tokenQueryPort = tokenQueryPort;
+        this.tokenMarketDataPort = tokenMarketDataPort;
         this.tokenWatchlistCommandPort = tokenWatchlistCommandPort;
         this.walletQueryPort = walletQueryPort;
         this.walletWatchlistCommandPort = walletWatchlistCommandPort;
@@ -132,15 +141,61 @@ public class TelegramCommandHandler {
 
     private String tokenMessage(String query) {
         if (query.isBlank()) return "Usage: /token <mint|symbol>";
-        var token = tokenQueryPort.find(query);
-        return token == null ? "Token is not in the watchlist." :
-                "Token\nMint: %s\nSymbol: %s\nName: %s\nStatus: %s".formatted(
-                        token.mintAddress(), value(token.symbol()), value(token.name()), token.status());
+        ResolvedToken resolved = resolveToken(query);
+        if (resolved == null) return "Token is not in the watchlist.";
+
+        var token = resolved.token();
+        var marketData = resolved.marketData() == null
+                ? tokenMarketDataPort.find(token.mintAddress()).orElse(null)
+                : resolved.marketData();
+        if (marketData == null) {
+            return "Token\nMint: %s\nSymbol: %s\nName: %s\nStatus: %s\n\nMarket data is currently unavailable."
+                    .formatted(token.mintAddress(), value(token.symbol()), value(token.name()), token.status());
+        }
+        tokenWatchlistCommandPort.updateMetadata(
+                token.mintAddress(), marketData.symbol(), marketData.name());
+
+        String symbol = firstPresent(marketData.symbol(), token.symbol());
+        String name = firstPresent(marketData.name(), token.name());
+        return """
+                Token: %s
+                Name: %s
+                Mint: %s
+                Price: %s
+                Market cap: %s
+                Liquidity: %s
+                Volume 24h: %s
+                Change 24h: %s
+                Buys/Sells 5m: %d / %d
+                Updated: %s
+                Source: %s
+                Status: %s
+
+                Descriptive intelligence only. No trade was executed.
+                """.formatted(
+                value(symbol),
+                value(name),
+                token.mintAddress(),
+                formatPrice(marketData.priceUsd()),
+                formatUsd(marketData.marketCapUsd()),
+                formatUsd(marketData.liquidityUsd()),
+                formatUsd(marketData.volume24hUsd()),
+                formatPercent(marketData.priceChange24hPercent()),
+                marketData.buys5m(),
+                marketData.sells5m(),
+                marketData.observedAt() == null ? "-" : DateTimeFormatter.ISO_INSTANT.format(marketData.observedAt()),
+                value(marketData.source()),
+                token.status());
     }
 
     private String watchToken(String mint) {
         if (mint.isBlank()) return "Usage: /watch-token <mint>";
-        try { tokenWatchlistCommandPort.watch(mint); return "Token added to watchlist: " + mint; }
+        try {
+            tokenWatchlistCommandPort.watch(mint);
+            tokenMarketDataPort.find(mint).ifPresent(marketData -> tokenWatchlistCommandPort.updateMetadata(
+                    mint, marketData.symbol(), marketData.name()));
+            return "Token added to watchlist: " + mint;
+        }
         catch (IllegalArgumentException exception) { return "Invalid token mint: " + exception.getMessage(); }
     }
 
@@ -152,6 +207,50 @@ public class TelegramCommandHandler {
 
     private String argument(String[] parts) { return parts.length < 2 ? "" : parts[1]; }
     private String value(String value) { return value == null ? "-" : value; }
+
+    private String firstPresent(String preferred, String fallback) {
+        return preferred == null || preferred.isBlank() ? fallback : preferred;
+    }
+
+    private ResolvedToken resolveToken(String query) {
+        TokenQueryPort.TokenSummary stored = tokenQueryPort.find(query);
+        if (stored != null) {
+            return new ResolvedToken(stored, null);
+        }
+
+        for (TokenQueryPort.TokenSummary candidate : tokenQueryPort.list()) {
+            var marketData = tokenMarketDataPort.find(candidate.mintAddress()).orElse(null);
+            if (marketData != null && marketData.symbol() != null
+                    && marketData.symbol().equalsIgnoreCase(query)) {
+                tokenWatchlistCommandPort.updateMetadata(
+                        candidate.mintAddress(), marketData.symbol(), marketData.name());
+                return new ResolvedToken(candidate, marketData);
+            }
+        }
+        return null;
+    }
+
+    private String formatPrice(BigDecimal value) {
+        if (value == null) return "-";
+        if (value.abs().compareTo(BigDecimal.ONE) < 0) {
+            return "$" + value.setScale(12, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString();
+        }
+        return formatUsd(value);
+    }
+
+    private String formatUsd(BigDecimal value) {
+        if (value == null) return "-";
+        NumberFormat format = NumberFormat.getNumberInstance(Locale.US);
+        format.setMinimumFractionDigits(2);
+        format.setMaximumFractionDigits(2);
+        return "$" + format.format(value);
+    }
+
+    private String formatPercent(BigDecimal value) {
+        if (value == null) return "-";
+        String prefix = value.signum() > 0 ? "+" : "";
+        return prefix + value.setScale(2, RoundingMode.HALF_UP).toPlainString() + "%";
+    }
 
     private String walletsMessage() {
         var wallets = walletQueryPort.list();
@@ -176,5 +275,10 @@ public class TelegramCommandHandler {
         if (address.isBlank()) return "Usage: /unwatch-wallet <address>";
         try { walletWatchlistCommandPort.unwatch(address); return "Wallet removed: " + address; }
         catch (IllegalArgumentException exception) { return "Invalid wallet: " + exception.getMessage(); }
+    }
+
+    private record ResolvedToken(
+            TokenQueryPort.TokenSummary token,
+            TokenMarketDataPort.TokenMarketData marketData) {
     }
 }
