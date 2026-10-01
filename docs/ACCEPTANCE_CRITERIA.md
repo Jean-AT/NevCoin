@@ -31,6 +31,9 @@
 - Stream disconnects are logged and retried with the configured bounded delay; disabling the stream keeps the overview polling fallback available.
 - Trade-level metrics aggregate a five-minute window with BUY volume, SELL volume, net flow, unique buyers, and unique sellers.
 - Stream-derived market data is persisted in ticks and snapshots and remains descriptive intelligence only; no BUY or SELL decision is produced.
+- `/token <mint|symbol>` enriches a persisted watchlist entry with current DEX market data, identifies its source, and degrades safely when no liquid pool is available.
+- Live token symbol and name metadata are persisted, and a legacy watchlist entry without metadata can be resolved by its provider symbol.
+- When several DEX pools exist for one mint, the overview selects the pool with the greatest reported USD liquidity.
 
 ## Intelligence Capabilities
 

@@ -24,6 +24,8 @@
 - [x] **COMPLETADO** — Send structured Telegram alerts with evidence and timestamps.
 - [x] **COMPLETADO** — Replace overview polling with streaming/WebSocket ingestion.
 - [x] **COMPLETADO** — Add trade-level buyer/seller pressure and unique trader metrics.
+- [x] **COMPLETADO** — Enrich `/token` on demand with live DEX price, market cap, liquidity, volume, price change, and five-minute transaction counts; persist provider metadata so symbol lookups remain available.
+- [ ] **INCOMPLETO** — Drive live stream subscriptions dynamically from the persisted token watchlist and emit Telegram alerts without duplicating `MARKET_WATCH_MINTS` configuration.
 
 ## EPIC 3 — Token Discovery (P0)
 
