@@ -25,7 +25,11 @@
 - [x] **COMPLETADO** — Replace overview polling with streaming/WebSocket ingestion.
 - [x] **COMPLETADO** — Add trade-level buyer/seller pressure and unique trader metrics.
 - [x] **COMPLETADO** — Enrich `/token` on demand with live DEX price, market cap, liquidity, volume, price change, and five-minute transaction counts; persist provider metadata so symbol lookups remain available.
-- [ ] **INCOMPLETO** — Drive live stream subscriptions dynamically from the persisted token watchlist and emit Telegram alerts without duplicating `MARKET_WATCH_MINTS` configuration.
+- [x] **COMPLETADO** — Drive live stream subscriptions dynamically from the persisted token watchlist and emit Telegram alerts without duplicating `MARKET_WATCH_MINTS` configuration.
+- [x] **COMPLETADO** — Combine streaming trades with periodic DEX snapshots and suppress duplicate token/type alerts during the active 15-minute signal window.
+- [x] **COMPLETADO** — Display token names in market alerts and add persistent `/alerts`, `/alerts-on`, and `/alerts-off` controls for individual or all watched tokens.
+- [x] **COMPLETADO** — Add a configurable momentum decision engine and persisted paper portfolio with `/paper-status`, `/paper-on`, `/paper-off`, and `/paper-reset`; paper BUY/SELL decisions notify Telegram, risk limits protect the simulation, and real execution remains disabled.
+- [x] **COMPLETADO** — Add `/signals` to group active market signals by token with evidence, market context, and paper-evaluation status.
 
 ## EPIC 3 — Token Discovery (P0)
 
@@ -41,7 +45,7 @@
 ## EPIC 5 — Social Intelligence (P1)
 
 - [ ] **INCOMPLETO** — Add configurable social sources, polling/streaming, deduplication, and token association.
-- [ ] **INCOMPLETO** — Persist social events and expose `/social` plus alerts.
+- [x] **PARCIAL** — Define normalized social events and expose `/social`; provider ingestion and persistence remain pending.
 
 ## EPIC 6 — Signal Intelligence (P1)
 

@@ -31,6 +31,11 @@
 - Stream disconnects are logged and retried with the configured bounded delay; disabling the stream keeps the overview polling fallback available.
 - Trade-level metrics aggregate a five-minute window with BUY volume, SELL volume, net flow, unique buyers, and unique sellers.
 - Stream-derived market data is persisted in ticks and snapshots and remains descriptive intelligence only; no BUY or SELL decision is produced.
+- The live stream uses active tokens from the persisted watchlist, accepts additions and removals without restarting the application, and may include optional static `MARKET_WATCH_MINTS` entries for backward compatibility.
+- Streaming trade ingestion runs alongside periodic DEX overview snapshots so price/liquidity signal rules remain actionable; an active signal of the same token and type suppresses duplicate persistence and Telegram alerts until its expiry.
+- Market signal notifications display persisted token names/symbols instead of raw mint addresses, and Telegram can enable or disable alerts persistently for one watched token or all tokens.
+- Paper trading is disabled by default, persists simulated cash, positions, trades, and realized PnL, and can produce only simulated BUY/SELL actions from the rule-based decision engine; Telegram paper decision alerts include token names, risk blocks, and simulated-only disclaimers; max positions, max daily loss, stop-loss, take-profit, and trade-notional limits are configurable; `/paper-reset` clears the simulated portfolio; no private key, transaction signer, or live order endpoint is used.
+- `/signals` lists non-expired market signals grouped by token, includes evidence and the latest available price, liquidity, volume, and net-flow context, and clearly states that paper evaluation is scheduled rather than a live trade.
 - `/token <mint|symbol>` enriches a persisted watchlist entry with current DEX market data, identifies its source, and degrades safely when no liquid pool is available.
 - Live token symbol and name metadata are persisted, and a legacy watchlist entry without metadata can be resolved by its provider symbol.
 - When several DEX pools exist for one mint, the overview selects the pool with the greatest reported USD liquidity.
@@ -45,6 +50,7 @@
 - Wallet analytics distinguish tracked wallets from smart-wallet conclusions and require sufficient sample size.
 - Social events record source, publication time, detection time, hashes, related tokens, and confidence.
 - Cross-signals include market, wallet, and social evidence, freshness, confidence, priority, and expiry.
+- `/social` exposes the last 24 hours of normalized social events and clearly reports when no provider is configured.
 
 ## Validation and Definition of Done
 

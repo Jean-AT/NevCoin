@@ -67,7 +67,13 @@ Send `/help` to the bot. The allowlist is strict: only the numeric chat IDs in
 `TELEGRAM_ALLOWED_CHAT_IDS` receive responses.
 
 Available commands include `/status`, `/health`, `/help`, `/tokens`,
-`/token <mint|symbol>`, `/wallets`, and `/wallet <address>`.
+`/token <mint|symbol>`, `/alerts`, `/alerts-on <mint|symbol|all>`,
+`/alerts-off <mint|symbol|all>`, `/signals`, `/paper-status`, `/paper-on`,
+`/paper-off`, `/paper-reset`, `/wallets`, and `/wallet <address>`. Paper
+trading sends simulated decision alerts and enforces configured risk limits,
+but it never signs or sends a blockchain transaction.
+`/social` shows normalized social events from the last 24 hours; until a
+provider is configured it reports an empty state.
 
 Never commit `.env` or paste `TELEGRAM_BOT_TOKEN` into source code, logs, or a
 chat. Telegram uses long polling, so no public webhook URL is required.
