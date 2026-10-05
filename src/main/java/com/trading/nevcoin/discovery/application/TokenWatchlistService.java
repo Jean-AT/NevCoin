@@ -2,6 +2,7 @@ package com.trading.nevcoin.discovery.application;
 
 import com.trading.nevcoin.discovery.application.ports.TokenWatchlistStore;
 import com.trading.nevcoin.discovery.domain.Token;
+import com.trading.nevcoin.discovery.domain.SolanaMintAddress;
 import com.trading.nevcoin.notification.application.ports.TokenQueryPort;
 import com.trading.nevcoin.notification.application.ports.TokenWatchlistCommandPort;
 import org.springframework.stereotype.Service;
@@ -9,12 +10,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.regex.Pattern;
 
 @Service
 public class TokenWatchlistService implements TokenQueryPort, TokenWatchlistCommandPort {
-
-    private static final Pattern SOLANA_MINT = Pattern.compile("[1-9A-HJ-NP-Za-km-z]{32,44}");
 
     private final TokenWatchlistStore store;
 
@@ -85,10 +83,7 @@ public class TokenWatchlistService implements TokenQueryPort, TokenWatchlistComm
     }
 
     private String requireMint(String value) {
-        if (value == null || !SOLANA_MINT.matcher(value.trim()).matches()) {
-            throw new IllegalArgumentException("A valid Solana Base58 mint address is required");
-        }
-        return value.trim();
+        return SolanaMintAddress.requireValid(value);
     }
 
     private String requireStoredMint(String value) {
