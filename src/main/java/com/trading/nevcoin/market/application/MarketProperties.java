@@ -16,6 +16,7 @@ public class MarketProperties {
     private String streamUrl = "wss://mainnet.helius-rpc.com";
     private String streamChannel = "logsSubscribe";
     private long streamReconnectDelaySeconds = 5;
+    private long watchlistRefreshMs = 5_000;
     private String heliusApiKey = "";
     private String chain = "solana";
     private String watchMints = "";
@@ -49,6 +50,7 @@ public class MarketProperties {
     public String getStreamUrl() { return streamUrl; }
     public String getStreamChannel() { return streamChannel; }
     public long getStreamReconnectDelaySeconds() { return streamReconnectDelaySeconds; }
+    public long getWatchlistRefreshMs() { return watchlistRefreshMs; }
     public String getHeliusApiKey() { return heliusApiKey; }
     public String getChain() { return chain; }
     public boolean isAlertsEnabled() { return alertsEnabled; }
@@ -62,6 +64,7 @@ public class MarketProperties {
     public void setStreamUrl(String streamUrl) { this.streamUrl = streamUrl; }
     public void setStreamChannel(String streamChannel) { this.streamChannel = streamChannel; }
     public void setStreamReconnectDelaySeconds(long streamReconnectDelaySeconds) { this.streamReconnectDelaySeconds = streamReconnectDelaySeconds; }
+    public void setWatchlistRefreshMs(long watchlistRefreshMs) { this.watchlistRefreshMs = watchlistRefreshMs; }
     public void setHeliusApiKey(String heliusApiKey) { this.heliusApiKey = heliusApiKey; }
     public void setChain(String chain) { this.chain = chain; }
     public void setWatchMints(String watchMints) { this.watchMints = watchMints; }

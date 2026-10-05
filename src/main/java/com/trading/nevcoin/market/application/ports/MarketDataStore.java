@@ -5,6 +5,7 @@ import com.trading.nevcoin.market.domain.MarketSnapshot;
 import com.trading.nevcoin.market.domain.MarketTick;
 
 import java.util.List;
+import java.time.Instant;
 
 public interface MarketDataStore {
 
@@ -15,4 +16,6 @@ public interface MarketDataStore {
     void saveSnapshot(MarketSnapshot snapshot);
 
     void saveSignal(MarketSignal signal);
+
+    boolean hasActiveSignal(String tokenAddress, MarketSignal.SignalType type, Instant observedAt);
 }

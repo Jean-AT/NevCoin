@@ -54,4 +54,11 @@ public class MarketSignalEntity {
         this.sourceQuality = signal.sourceQuality();
         this.evidence = new ArrayList<>(signal.evidence());
     }
+
+    public MarketSignal.SignalType getType() { return type; }
+    public String getTokenAddress() { return tokenAddress; }
+    public BigDecimal getStrength() { return strength; }
+    public Instant getObservedAt() { return observedAt; }
+    public Instant getExpiresAt() { return expiresAt; }
+    public List<String> getEvidence() { return List.copyOf(evidence); }
 }

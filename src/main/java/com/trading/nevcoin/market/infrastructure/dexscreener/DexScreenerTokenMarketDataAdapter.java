@@ -3,6 +3,8 @@ package com.trading.nevcoin.market.infrastructure.dexscreener;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.trading.nevcoin.notification.application.ports.TokenMarketDataPort;
+import com.trading.nevcoin.market.application.ports.MarketDataProvider;
+import com.trading.nevcoin.market.domain.MarketTick;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -22,7 +24,7 @@ import java.util.Optional;
 import java.util.stream.StreamSupport;
 
 @Component
-public class DexScreenerTokenMarketDataAdapter implements TokenMarketDataPort {
+public class DexScreenerTokenMarketDataAdapter implements TokenMarketDataPort, MarketDataProvider {
 
     private static final Logger log = LoggerFactory.getLogger(DexScreenerTokenMarketDataAdapter.class);
 
@@ -69,6 +71,21 @@ public class DexScreenerTokenMarketDataAdapter implements TokenMarketDataPort {
             log.warn("DEX Screener market response could not be processed", exception);
             return Optional.empty();
         }
+    }
+
+    @Override
+    public MarketTick fetch(String tokenAddress) {
+        TokenMarketData data = find(tokenAddress)
+                .orElseThrow(() -> new IllegalStateException("DEX market data is unavailable"));
+        return new MarketTick(
+                tokenAddress,
+                data.observedAt(),
+                data.observedAt(),
+                data.priceUsd(),
+                data.liquidityUsd(),
+                data.volume24hUsd(),
+                data.priceChange24hPercent(),
+                data.source());
     }
 
     Optional<TokenMarketData> parse(JsonNode response, String mintAddress) {

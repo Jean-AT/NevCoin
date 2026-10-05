@@ -45,6 +45,7 @@ public class HeliusMarketTradeStreamProvider implements MarketTradeStreamProvide
     private final AtomicBoolean running = new AtomicBoolean();
     private final AtomicLong requestIds = new AtomicLong(1);
     private final Map<Long, String> pendingSubscriptions = new HashMap<>();
+    private final Map<Long, Long> pendingUnsubscriptions = new HashMap<>();
     private final Map<Long, String> subscriptionTokens = new HashMap<>();
     private final Set<String> seenSignatures = new HashSet<>();
     private volatile Set<String> tokenAddresses = Set.of();
@@ -70,13 +71,23 @@ public class HeliusMarketTradeStreamProvider implements MarketTradeStreamProvide
         if (properties.getHeliusApiKey() == null || properties.getHeliusApiKey().isBlank()) {
             throw new IllegalStateException("Market stream is enabled but HELIUS_API_KEY is empty");
         }
-        if (tokenAddresses.isEmpty()) {
-            throw new IllegalStateException("Market stream is enabled but MARKET_WATCH_MINTS is empty");
-        }
         this.tokenAddresses = Set.copyOf(tokenAddresses);
         this.consumer = consumer;
         running.set(true);
         connect();
+    }
+
+    @Override
+    public synchronized void updateSubscriptions(Set<String> tokenAddresses) {
+        Set<String> desiredTokens = Set.copyOf(tokenAddresses);
+        if (desiredTokens.equals(this.tokenAddresses)) {
+            return;
+        }
+        this.tokenAddresses = desiredTokens;
+        java.net.http.WebSocket current = webSocket;
+        if (running.get() && current != null) {
+            reconcileSubscriptions(current);
+        }
     }
 
     @Override
@@ -89,6 +100,7 @@ public class HeliusMarketTradeStreamProvider implements MarketTradeStreamProvide
         }
         synchronized (pendingSubscriptions) {
             pendingSubscriptions.clear();
+            pendingUnsubscriptions.clear();
             subscriptionTokens.clear();
         }
     }
@@ -130,37 +142,80 @@ public class HeliusMarketTradeStreamProvider implements MarketTradeStreamProvide
     private void subscribe(java.net.http.WebSocket socket) {
         synchronized (pendingSubscriptions) {
             pendingSubscriptions.clear();
+            pendingUnsubscriptions.clear();
             subscriptionTokens.clear();
-            for (String tokenAddress : tokenAddresses) {
-                long requestId = requestIds.getAndIncrement();
-                ObjectNode request = objectMapper.createObjectNode();
-                request.put("jsonrpc", "2.0");
-                request.put("id", requestId);
-                request.put("method", properties.getStreamChannel());
-                ArrayNode params = request.putArray("params");
-                ObjectNode filter = params.addObject();
-                ArrayNode mentions = filter.putArray("mentions");
-                mentions.add(tokenAddress);
-                ObjectNode options = params.addObject();
-                options.put("commitment", "confirmed");
-                pendingSubscriptions.put(requestId, tokenAddress);
-                socket.sendText(request.toString(), true);
+            tokenAddresses.forEach(tokenAddress -> sendSubscribe(socket, tokenAddress));
+        }
+    }
+
+    private void reconcileSubscriptions(java.net.http.WebSocket socket) {
+        synchronized (pendingSubscriptions) {
+            Set<String> subscribedOrPending = new HashSet<>(subscriptionTokens.values());
+            subscribedOrPending.addAll(pendingSubscriptions.values());
+            tokenAddresses.stream()
+                    .filter(tokenAddress -> !subscribedOrPending.contains(tokenAddress))
+                    .forEach(tokenAddress -> sendSubscribe(socket, tokenAddress));
+
+            subscriptionTokens.entrySet().stream()
+                    .filter(entry -> !tokenAddresses.contains(entry.getValue()))
+                    .map(Map.Entry::getKey)
+                    .toList()
+                    .forEach(subscriptionId -> sendUnsubscribe(socket, subscriptionId));
+        }
+    }
+
+    private void sendSubscribe(java.net.http.WebSocket socket, String tokenAddress) {
+        long requestId = requestIds.getAndIncrement();
+        ObjectNode request = objectMapper.createObjectNode();
+        request.put("jsonrpc", "2.0");
+        request.put("id", requestId);
+        request.put("method", properties.getStreamChannel());
+        ArrayNode params = request.putArray("params");
+        ObjectNode filter = params.addObject();
+        filter.putArray("mentions").add(tokenAddress);
+        params.addObject().put("commitment", "confirmed");
+        pendingSubscriptions.put(requestId, tokenAddress);
+        socket.sendText(request.toString(), true);
+    }
+
+    private void sendUnsubscribe(java.net.http.WebSocket socket, long subscriptionId) {
+        long requestId = requestIds.getAndIncrement();
+        ObjectNode request = objectMapper.createObjectNode();
+        request.put("jsonrpc", "2.0");
+        request.put("id", requestId);
+        request.put("method", "logsUnsubscribe");
+        request.putArray("params").add(subscriptionId);
+        subscriptionTokens.remove(subscriptionId);
+        pendingUnsubscriptions.put(requestId, subscriptionId);
+        socket.sendText(request.toString(), true);
+    }
+
+    private void handleSubscriptionResponse(JsonNode root) {
+        long requestId = root.path("id").asLong();
+        synchronized (pendingSubscriptions) {
+            String token = pendingSubscriptions.remove(requestId);
+            if (token != null) {
+                if (!root.path("result").isNumber()) {
+                    log.warn("Helius rejected market stream subscription for tokenAddress={}", token);
+                    return;
+                }
+                long subscriptionId = root.path("result").asLong();
+                if (tokenAddresses.contains(token)) {
+                    subscriptionTokens.put(subscriptionId, token);
+                } else if (webSocket != null) {
+                    sendUnsubscribe(webSocket, subscriptionId);
+                }
+                return;
             }
+            pendingUnsubscriptions.remove(requestId);
         }
     }
 
     private void handleMessage(String text) {
         try {
             JsonNode root = objectMapper.readTree(text);
-            if (root.has("result") && root.path("result").isNumber()) {
-                long requestId = root.path("id").asLong();
-                long subscriptionId = root.path("result").asLong();
-                synchronized (pendingSubscriptions) {
-                    String token = pendingSubscriptions.remove(requestId);
-                    if (token != null) {
-                        subscriptionTokens.put(subscriptionId, token);
-                    }
-                }
+            if (root.has("id") && (root.has("result") || root.has("error"))) {
+                handleSubscriptionResponse(root);
                 return;
             }
             if (!"logsNotification".equals(root.path("method").asText())) {
@@ -296,6 +351,7 @@ public class HeliusMarketTradeStreamProvider implements MarketTradeStreamProvide
 
         @Override
         public void onOpen(java.net.http.WebSocket socket) {
+            webSocket = socket;
             log.info("Helius market stream connected");
             subscribe(socket);
             java.net.http.WebSocket.Listener.super.onOpen(socket);

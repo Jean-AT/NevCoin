@@ -68,4 +68,9 @@ public class MarketSnapshotEntity {
         this.uniqueBuyers5m = snapshot.uniqueBuyers5m();
         this.uniqueSellers5m = snapshot.uniqueSellers5m();
     }
+
+    public BigDecimal getPriceUsd() { return priceUsd; }
+    public BigDecimal getLiquidityUsd() { return liquidityUsd; }
+    public BigDecimal getVolume24hUsd() { return volume24hUsd; }
+    public BigDecimal getNetFlow5m() { return netFlow5m; }
 }

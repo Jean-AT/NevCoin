@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.time.Instant;
 
 @Component
 public class JpaMarketDataStore implements MarketDataStore {
@@ -51,5 +52,11 @@ public class JpaMarketDataStore implements MarketDataStore {
     @Transactional
     public void saveSignal(MarketSignal signal) {
         signalRepository.save(new MarketSignalEntity(signal));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean hasActiveSignal(String tokenAddress, MarketSignal.SignalType type, Instant observedAt) {
+        return signalRepository.existsByTokenAddressAndTypeAndExpiresAtAfter(tokenAddress, type, observedAt);
     }
 }
