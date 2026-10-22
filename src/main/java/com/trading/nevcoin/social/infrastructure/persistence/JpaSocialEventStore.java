@@ -3,6 +3,7 @@ package com.trading.nevcoin.social.infrastructure.persistence;
 import com.trading.nevcoin.social.application.ports.SocialEventStore;
 import com.trading.nevcoin.social.domain.SocialEvent;
 import org.springframework.stereotype.Component;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
@@ -20,8 +21,12 @@ public class JpaSocialEventStore implements SocialEventStore {
     @Transactional
     public boolean saveIfNew(SocialEvent event) {
         if (repository.existsByProviderAndSourceIdAndExternalId(event.provider(), event.sourceId(), event.externalEventId())) return false;
-        repository.save(new SocialEventEntity(event));
-        return true;
+        try {
+            repository.saveAndFlush(new SocialEventEntity(event));
+            return true;
+        } catch (DataIntegrityViolationException duplicate) {
+            return false;
+        }
     }
 
     @Override
