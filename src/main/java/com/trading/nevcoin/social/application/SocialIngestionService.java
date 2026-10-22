@@ -5,6 +5,9 @@ import com.trading.nevcoin.market.application.ports.MarketWatchlistPort;
 import com.trading.nevcoin.notification.application.ports.NotificationPort;
 import com.trading.nevcoin.social.application.ports.SocialEventProvider;
 import com.trading.nevcoin.social.application.ports.SocialFetchResult;
+import com.trading.nevcoin.social.application.ports.SocialCursorStore;
+import com.trading.nevcoin.social.application.ports.SocialProcessingFailureStore;
+import com.trading.nevcoin.social.application.ports.SocialRawEventStore;
 import com.trading.nevcoin.social.domain.RawSocialEvent;
 import com.trading.nevcoin.social.domain.SocialConfidence;
 import com.trading.nevcoin.social.domain.SocialEventStatus;
@@ -29,15 +32,23 @@ public class SocialIngestionService {
     private final SocialProperties properties;
     private final SocialEventProvider provider;
     private final SocialEventStore store;
+    private final SocialRawEventStore rawEventStore;
+    private final SocialCursorStore cursorStore;
+    private final SocialProcessingFailureStore failureStore;
     private final MarketWatchlistPort watchlist;
     private final MarketTokenMetadataPort metadata;
     private final NotificationPort notifications;
 
     public SocialIngestionService(SocialProperties properties, SocialEventProvider provider, SocialEventStore store,
-                                  MarketWatchlistPort watchlist, MarketTokenMetadataPort metadata, NotificationPort notifications) {
+                                  SocialRawEventStore rawEventStore, SocialCursorStore cursorStore,
+                                  SocialProcessingFailureStore failureStore, MarketWatchlistPort watchlist,
+                                  MarketTokenMetadataPort metadata, NotificationPort notifications) {
         this.properties = properties;
         this.provider = provider;
         this.store = store;
+        this.rawEventStore = rawEventStore;
+        this.cursorStore = cursorStore;
+        this.failureStore = failureStore;
         this.watchlist = watchlist;
         this.metadata = metadata;
         this.notifications = notifications;
@@ -48,7 +59,11 @@ public class SocialIngestionService {
         if (!properties.isEnabled()) return;
         for (String url : urls()) {
             try {
-                SocialFetchResult result = provider.fetch("rss:" + url, url, null, properties.getMaxEventsPerFeed());
+                String sourceId = "rss:" + url;
+                String cursor = cursorStore.current(sourceId).orElse(null);
+                SocialFetchResult result = provider.fetch(sourceId, url, cursor, properties.getMaxEventsPerFeed());
+                result.events().forEach(rawEventStore::saveIfNew);
+                result.failures().forEach(failure -> failureStore.record(sourceId, failure.stage(), failure, Instant.now()));
                 result.events().stream()
                         .map(this::normalize)
                         .map(this::associateToken)
@@ -56,6 +71,9 @@ public class SocialIngestionService {
                         .forEach(this::alert);
                 result.failures().forEach(failure -> log.warn("Social provider failure source={} category={} retryable={} message={}",
                         url, failure.category(), failure.retryable(), failure.message()));
+                if (result.failures().stream().noneMatch(com.trading.nevcoin.social.application.ports.SocialProviderFailure::retryable)) {
+                    cursorStore.advance(sourceId, result.nextCursor(), result.fetchedAt());
+                }
             } catch (RuntimeException exception) {
                 log.warn("Social ingestion failed url={}", url, exception);
             }
