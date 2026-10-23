@@ -4,6 +4,7 @@ import com.trading.nevcoin.social.domain.SocialEvent;
 import com.trading.nevcoin.social.domain.SocialEventStatus;
 import com.trading.nevcoin.social.domain.SocialEventType;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
@@ -45,6 +46,12 @@ public class SocialEventEntity {
     private Instant receivedAt;
     @Column(columnDefinition = "TEXT")
     private String evidence;
+    @Convert(converter = SocialEntitiesJsonConverter.class)
+    @Column(name = "entities_json", nullable = false, columnDefinition = "TEXT")
+    private List<com.trading.nevcoin.social.domain.SocialEntity> entities;
+    @Convert(converter = TokenAssociationsJsonConverter.class)
+    @Column(name = "token_associations_json", nullable = false, columnDefinition = "TEXT")
+    private List<com.trading.nevcoin.social.domain.TokenAssociation> tokenAssociations;
     @Column(precision = 8, scale = 6)
     private BigDecimal confidence;
     @Column(name = "event_type", length = 64)
@@ -75,6 +82,8 @@ public class SocialEventEntity {
         alertedAt = event.alertedAt();
         receivedAt = event.receivedAt();
         evidence = String.join("\n", event.legacyEvidence());
+        entities = event.entities();
+        tokenAssociations = event.tokenAssociations();
         confidence = event.relevanceScore();
         eventType = event.type().name();
         normalizedContent = event.normalizedContent();
@@ -100,7 +109,10 @@ public class SocialEventEntity {
                 status == null ? SocialEventStatus.PUBLISHED : SocialEventStatus.valueOf(status),
                 algorithmVersion,
                 values.stream().map(value -> new com.trading.nevcoin.social.domain.SocialEvidence("LEGACY", value, externalId, observedAt, null)).toList(),
-                tokenAddress == null ? List.of() : List.of(new com.trading.nevcoin.social.domain.TokenAssociation(tokenAddress, "LEGACY", null, algorithmVersion, List.of())),
+                entities == null ? List.of() : entities,
+                tokenAssociations == null
+                        ? (tokenAddress == null ? List.of() : List.of(new com.trading.nevcoin.social.domain.TokenAssociation(tokenAddress, "LEGACY", null, algorithmVersion, List.of())))
+                        : tokenAssociations,
                 confidence,
                 confidence == null ? null : confidence.compareTo(BigDecimal.ONE) >= 0 ? com.trading.nevcoin.social.domain.SocialConfidence.HIGH : com.trading.nevcoin.social.domain.SocialConfidence.MEDIUM);
     }

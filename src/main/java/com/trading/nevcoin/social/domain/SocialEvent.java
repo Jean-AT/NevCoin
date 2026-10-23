@@ -21,6 +21,7 @@ public record SocialEvent(
         SocialEventStatus status,
         String algorithmVersion,
         List<SocialEvidence> structuredEvidence,
+        List<SocialEntity> entities,
         List<TokenAssociation> tokenAssociations,
         BigDecimal relevanceScore,
         SocialConfidence confidence) {
@@ -33,6 +34,7 @@ public record SocialEvent(
                 SocialEventType.UNKNOWN, text, null, SocialEventStatus.PUBLISHED, "legacy-v1",
                 legacyEvidence == null ? List.of() : legacyEvidence.stream()
                         .map(value -> new SocialEvidence("LEGACY", value, externalId, observedAt, null)).toList(),
+                List.of(),
                 tokenAddress == null ? List.of() : List.of(new TokenAssociation(tokenAddress, "LEGACY", null, "legacy-v1", List.of())),
                 null, confidence == null ? null : confidence.compareTo(BigDecimal.ONE) >= 0 ? SocialConfidence.HIGH : SocialConfidence.MEDIUM);
     }
@@ -42,6 +44,7 @@ public record SocialEvent(
         status = status == null ? SocialEventStatus.RECEIVED : status;
         algorithmVersion = algorithmVersion == null ? "social-v1" : algorithmVersion;
         structuredEvidence = structuredEvidence == null ? List.of() : List.copyOf(structuredEvidence);
+        entities = entities == null ? List.of() : List.copyOf(entities);
         tokenAssociations = tokenAssociations == null ? List.of() : List.copyOf(tokenAssociations);
         receivedAt = receivedAt == null ? Instant.now() : receivedAt;
         publishedAt = publishedAt == null ? receivedAt : publishedAt;

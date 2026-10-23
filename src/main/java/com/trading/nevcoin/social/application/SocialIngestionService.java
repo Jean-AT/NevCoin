@@ -1,13 +1,14 @@
 package com.trading.nevcoin.social.application;
 
 import com.trading.nevcoin.market.application.ports.MarketTokenMetadataPort;
-import com.trading.nevcoin.market.application.ports.MarketWatchlistPort;
 import com.trading.nevcoin.notification.application.ports.NotificationPort;
 import com.trading.nevcoin.social.application.ports.SocialEventProvider;
+import com.trading.nevcoin.social.application.ports.SocialEntityExtractor;
 import com.trading.nevcoin.social.application.ports.SocialFetchResult;
 import com.trading.nevcoin.social.application.ports.SocialCursorStore;
 import com.trading.nevcoin.social.application.ports.SocialProcessingFailureStore;
 import com.trading.nevcoin.social.application.ports.SocialRawEventStore;
+import com.trading.nevcoin.social.application.ports.TokenAssociationResolver;
 import com.trading.nevcoin.social.domain.RawSocialEvent;
 import com.trading.nevcoin.social.domain.SocialConfidence;
 import com.trading.nevcoin.social.domain.SocialEventStatus;
@@ -22,7 +23,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.UUID;
 import java.time.Instant;
 
@@ -35,23 +35,26 @@ public class SocialIngestionService {
     private final SocialRawEventStore rawEventStore;
     private final SocialCursorStore cursorStore;
     private final SocialProcessingFailureStore failureStore;
-    private final MarketWatchlistPort watchlist;
     private final MarketTokenMetadataPort metadata;
     private final NotificationPort notifications;
+    private final SocialEntityExtractor entityExtractor;
+    private final TokenAssociationResolver associationResolver;
 
     public SocialIngestionService(SocialProperties properties, SocialEventProvider provider, SocialEventStore store,
                                   SocialRawEventStore rawEventStore, SocialCursorStore cursorStore,
-                                  SocialProcessingFailureStore failureStore, MarketWatchlistPort watchlist,
-                                  MarketTokenMetadataPort metadata, NotificationPort notifications) {
+                                  SocialProcessingFailureStore failureStore,
+                                  MarketTokenMetadataPort metadata, NotificationPort notifications,
+                                  SocialEntityExtractor entityExtractor, TokenAssociationResolver associationResolver) {
         this.properties = properties;
         this.provider = provider;
         this.store = store;
         this.rawEventStore = rawEventStore;
         this.cursorStore = cursorStore;
         this.failureStore = failureStore;
-        this.watchlist = watchlist;
         this.metadata = metadata;
         this.notifications = notifications;
+        this.entityExtractor = entityExtractor;
+        this.associationResolver = associationResolver;
     }
 
     @Scheduled(fixedDelayString = "${social.poll-interval-ms:120000}")
@@ -83,28 +86,27 @@ public class SocialIngestionService {
     private SocialEvent normalize(RawSocialEvent raw) {
         String fingerprint = UUID.nameUUIDFromBytes((raw.provider() + "|" + raw.sourceId() + "|"
                 + raw.externalEventId() + "|" + raw.rawText()).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString();
+        List<com.trading.nevcoin.social.domain.SocialEntity> entities = entityExtractor.extract(raw.rawText());
+        List<SocialEvidence> evidence = new ArrayList<>();
+        evidence.add(new SocialEvidence("RAW_TEXT", raw.rawText(), raw.externalEventId(), raw.receivedAt(), SocialConfidence.MEDIUM));
+        evidence.addAll(entities.stream()
+                .map(entity -> new SocialEvidence("ENTITY_" + entity.type(), entity.value(), raw.externalEventId(),
+                        raw.receivedAt(), SocialConfidence.MEDIUM))
+                .toList());
         return new SocialEvent(raw.provider(), raw.sourceId(), raw.sourceAccountId(), raw.externalEventId(), raw.canonicalUrl(),
                 raw.publishedAt(), raw.receivedAt(), Instant.now(), null, SocialEventType.UNKNOWN,
                 raw.rawText(), fingerprint, SocialEventStatus.NORMALIZED, "social-v2",
-                List.of(new SocialEvidence("RAW_TEXT", raw.rawText(), raw.externalEventId(), raw.receivedAt(), SocialConfidence.MEDIUM)),
-                List.of(), null, SocialConfidence.MEDIUM);
+                evidence, entities, List.of(), null, SocialConfidence.MEDIUM);
     }
 
     private SocialEvent associateToken(SocialEvent event) {
-        String haystack = (event.text() + " " + event.author()).toLowerCase(Locale.ROOT);
-        for (String mint : watchlist.activeMintAddresses()) {
-            var token = metadata.findByMintAddress(mint).orElse(null);
-            if (haystack.contains(mint.toLowerCase(Locale.ROOT))
-                    || (token != null && ((token.symbol() != null && haystack.contains(token.symbol().toLowerCase(Locale.ROOT)))
-                    || (token.name() != null && haystack.contains(token.name().toLowerCase(Locale.ROOT))))) ) {
-                return new SocialEvent(event.provider(), event.sourceId(), event.sourceAccountId(), event.externalEventId(), event.canonicalUrl(),
-                        event.publishedAt(), event.receivedAt(), event.processedAt(), event.alertedAt(), SocialEventType.TOKEN_MENTION,
-                        event.normalizedContent(), event.fingerprint(), SocialEventStatus.ASSOCIATED, event.algorithmVersion(),
-                        event.structuredEvidence(), List.of(new com.trading.nevcoin.social.domain.TokenAssociation(mint, "DIRECT_NAME_REFERENCE", SocialConfidence.MEDIUM, "matcher-v1", event.structuredEvidence())),
-                        event.relevanceScore(), event.confidence());
-            }
-        }
-        return event;
+        List<com.trading.nevcoin.social.domain.TokenAssociation> associations =
+                associationResolver.resolve(event.text(), event.entities(), event.externalEventId());
+        if (associations.isEmpty()) return event;
+        return new SocialEvent(event.provider(), event.sourceId(), event.sourceAccountId(), event.externalEventId(), event.canonicalUrl(),
+                event.publishedAt(), event.receivedAt(), event.processedAt(), event.alertedAt(), SocialEventType.TOKEN_MENTION,
+                event.normalizedContent(), event.fingerprint(), SocialEventStatus.ASSOCIATED, event.algorithmVersion(),
+                event.structuredEvidence(), event.entities(), associations, event.relevanceScore(), event.confidence());
     }
 
     private void alert(SocialEvent event) {
