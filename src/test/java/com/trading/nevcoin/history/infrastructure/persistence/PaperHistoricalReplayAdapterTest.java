@@ -26,8 +26,10 @@ class PaperHistoricalReplayAdapterTest {
                         BigDecimal.ONE, BASE, BASE, BASE.plusSeconds(10), 1, 1, List.of(), "social-v1")),
                 List.of(), Set.of("social-v1"));
 
-        var adapter = new PaperHistoricalReplayAdapter(
-                (com.trading.nevcoin.history.application.ports.HistoricalReplayPort) request -> canonical);
+        var adapter = new PaperHistoricalReplayAdapter(new com.trading.nevcoin.history.application.HistoricalReplayService(
+                request -> new com.trading.nevcoin.history.domain.ReplaySourceData(
+                        canonical.rawSocialEvents(), canonical.socialEvents(), canonical.marketTicks(),
+                        canonical.marketSnapshots(), canonical.socialSignals(), canonical.crossDomainSignals())));
         var request = new PaperValidationRequest(BASE, BASE.plusSeconds(10), BigDecimal.TEN, BigDecimal.ONE,
                 BigDecimal.ZERO, 0, 1, Set.of(), Set.of(), BigDecimal.ZERO, BigDecimal.ZERO);
 
