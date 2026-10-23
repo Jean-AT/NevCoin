@@ -73,4 +73,10 @@ public class MarketSnapshotEntity {
     public BigDecimal getLiquidityUsd() { return liquidityUsd; }
     public BigDecimal getVolume24hUsd() { return volume24hUsd; }
     public BigDecimal getNetFlow5m() { return netFlow5m; }
+
+    public MarketSnapshot toDomain() {
+        return new MarketSnapshot(tokenAddress, timestamp, priceUsd, liquidityUsd, volume24hUsd,
+                priceChange1m, priceChange5m, priceChange15m, volatility5m, dataFreshnessMs,
+                buyVolume5m, sellVolume5m, netFlow5m, uniqueBuyers5m, uniqueSellers5m);
+    }
 }

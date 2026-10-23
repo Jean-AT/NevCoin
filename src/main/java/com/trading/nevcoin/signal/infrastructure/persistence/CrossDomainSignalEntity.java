@@ -41,6 +41,6 @@ public class CrossDomainSignalEntity {
         detectedAt = signal.detectedAt(); expiresAt = signal.expiresAt(); algorithmVersion = signal.algorithmVersion(); components = signal.components();
         evidence = signal.evidence().stream().map(SignalEvidenceValue::new).toList();
     }
-    CrossDomainSignal toDomain() { return new CrossDomainSignal(id, tokenAddress, priority, strength, confidence, detectedAt, expiresAt, components,
+    public CrossDomainSignal toDomain() { return new CrossDomainSignal(id, tokenAddress, priority, strength, confidence, detectedAt, expiresAt, components,
             evidence.stream().map(SignalEvidenceValue::toDomain).toList(), algorithmVersion); }
 }

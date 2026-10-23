@@ -5,4 +5,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface MarketSnapshotJpaRepository extends JpaRepository<MarketSnapshotEntity, String> {
 
     java.util.Optional<MarketSnapshotEntity> findTopByTokenAddressOrderByTimestampDesc(String tokenAddress);
+    java.util.List<MarketSnapshotEntity> findByTimestampLessThanEqualOrderByTimestampAsc(java.time.Instant asOf);
 }

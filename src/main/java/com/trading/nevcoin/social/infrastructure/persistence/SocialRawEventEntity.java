@@ -51,6 +51,11 @@ public class SocialRawEventEntity {
         payloadHash = hash(event.provider() + "|" + event.sourceId() + "|" + event.externalEventId() + "|" + event.rawText());
     }
 
+    public RawSocialEvent toDomain() {
+        return new RawSocialEvent(provider, sourceId, sourceAccountId, externalEventId, canonicalUrl,
+                publishedAt, receivedAt, rawText, java.util.Map.of());
+    }
+
     private String hash(String value) {
         try {
             return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8)));

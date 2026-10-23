@@ -8,4 +8,5 @@ import java.util.List;
 public interface SocialEventJpaRepository extends JpaRepository<SocialEventEntity, String> {
     boolean existsByProviderAndSourceIdAndExternalId(String provider, String sourceId, String externalId);
     List<SocialEventEntity> findByObservedAtAfterOrderByObservedAtDesc(Instant since);
+    List<SocialEventEntity> findByReceivedAtLessThanEqualOrderByReceivedAtAsc(Instant asOf);
 }

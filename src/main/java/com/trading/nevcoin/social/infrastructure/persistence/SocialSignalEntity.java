@@ -41,6 +41,6 @@ public class SocialSignalEntity {
         sourceCount = signal.sourceCount(); uniqueSourceCount = signal.uniqueSourceCount(); algorithmVersion = signal.algorithmVersion();
         evidence = signal.evidence().stream().map(SocialSignalEvidenceValue::new).toList();
     }
-    SocialSignal toDomain() { return new SocialSignal(id, tokenAddress, signalType, strength, confidence, firstObservedAt, lastObservedAt, expiresAt,
+    public SocialSignal toDomain() { return new SocialSignal(id, tokenAddress, signalType, strength, confidence, firstObservedAt, lastObservedAt, expiresAt,
             sourceCount, uniqueSourceCount, evidence.stream().map(SocialSignalEvidenceValue::toDomain).toList(), algorithmVersion); }
 }

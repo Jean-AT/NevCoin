@@ -5,7 +5,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.time.Instant;
 import java.util.List;
 
-interface CrossDomainSignalJpaRepository extends JpaRepository<CrossDomainSignalEntity, String> {
+public interface CrossDomainSignalJpaRepository extends JpaRepository<CrossDomainSignalEntity, String> {
+    List<CrossDomainSignalEntity> findByDetectedAtLessThanEqualOrderByDetectedAtAsc(Instant asOf);
     List<CrossDomainSignalEntity> findByDetectedAtAfterOrderByDetectedAtDesc(Instant since);
     List<CrossDomainSignalEntity> findByTokenAddressAndExpiresAtGreaterThanEqualOrderByDetectedAtDesc(String tokenAddress, Instant asOf);
     List<CrossDomainSignalEntity> findByPriorityAndExpiresAtGreaterThanEqualOrderByDetectedAtDesc(SignalPriority priority, Instant asOf);
