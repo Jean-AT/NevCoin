@@ -11,11 +11,13 @@ import com.trading.nevcoin.market.domain.MarketSnapshot;
 import com.trading.nevcoin.market.domain.MarketTick;
 import com.trading.nevcoin.market.domain.MarketTrade;
 import com.trading.nevcoin.notification.application.ports.NotificationPort;
+import com.trading.nevcoin.signal.application.SignalIntelligenceService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.HashSet;
 import java.util.Set;
+import java.time.Instant;
 
 @Service
 @ConditionalOnProperty(prefix = "market", name = "enabled", havingValue = "true")
@@ -41,8 +44,10 @@ public class MarketIngestionService implements SmartLifecycle {
     private final MarketAlertPolicyPort marketAlertPolicyPort;
     private final MarketTokenMetadataPort marketTokenMetadataPort;
     private final TradeWindowAggregator tradeWindowAggregator;
+    private final SignalIntelligenceService signalIntelligenceService;
     private volatile boolean running;
 
+    @Autowired
     public MarketIngestionService(
             MarketProperties properties,
             ObjectProvider<MarketDataProvider> providerProvider,
@@ -54,7 +59,8 @@ public class MarketIngestionService implements SmartLifecycle {
             MarketWatchlistPort marketWatchlistPort,
             MarketAlertPolicyPort marketAlertPolicyPort,
             MarketTokenMetadataPort marketTokenMetadataPort,
-            TradeWindowAggregator tradeWindowAggregator) {
+            TradeWindowAggregator tradeWindowAggregator,
+            SignalIntelligenceService signalIntelligenceService) {
         this.properties = properties;
         this.providerProvider = providerProvider;
         this.store = store;
@@ -66,6 +72,18 @@ public class MarketIngestionService implements SmartLifecycle {
         this.marketAlertPolicyPort = marketAlertPolicyPort;
         this.marketTokenMetadataPort = marketTokenMetadataPort;
         this.tradeWindowAggregator = tradeWindowAggregator;
+        this.signalIntelligenceService = signalIntelligenceService;
+    }
+
+    /** Compatibility constructor for application tests and existing adapters. */
+    public MarketIngestionService(
+            MarketProperties properties, ObjectProvider<MarketDataProvider> providerProvider, MarketDataStore store,
+            MarketSnapshotCalculator snapshotCalculator, MarketSignalDetector signalDetector, NotificationPort notificationPort,
+            MarketTradeStreamProvider tradeStreamProvider, MarketWatchlistPort marketWatchlistPort,
+            MarketAlertPolicyPort marketAlertPolicyPort, MarketTokenMetadataPort marketTokenMetadataPort,
+            TradeWindowAggregator tradeWindowAggregator) {
+        this(properties, providerProvider, store, snapshotCalculator, signalDetector, notificationPort, tradeStreamProvider,
+                marketWatchlistPort, marketAlertPolicyPort, marketTokenMetadataPort, tradeWindowAggregator, null);
     }
 
     @Scheduled(fixedDelayString = "${market.poll-interval-ms:30000}")
@@ -141,6 +159,7 @@ public class MarketIngestionService implements SmartLifecycle {
                 continue;
             }
             store.saveSignal(signal);
+            if (signalIntelligenceService != null) signalIntelligenceService.observe(signal, Instant.now());
             publishAlert(signal, snapshot);
         }
     }

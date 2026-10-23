@@ -1,6 +1,8 @@
 package com.trading.nevcoin.wallet.application;
 
 import com.trading.nevcoin.notification.application.ports.NotificationPort;
+import com.trading.nevcoin.signal.application.SignalIntelligenceService;
+import com.trading.nevcoin.signal.application.ports.WalletSignalEvent;
 import com.trading.nevcoin.wallet.application.ports.WalletActivityProvider;
 import com.trading.nevcoin.wallet.application.ports.WalletRegistryStore;
 import org.slf4j.Logger;
@@ -20,11 +22,14 @@ public class WalletPollingService {
     private final WalletSwapDetector detector;
     private final NotificationPort notificationPort;
     private final Set<String> seenSignatures = new HashSet<>();
+    private final SignalIntelligenceService signalIntelligenceService;
 
     public WalletPollingService(WalletProperties properties, WalletRegistryStore registry, WalletActivityProvider provider,
-                                WalletSwapDetector detector, NotificationPort notificationPort) {
+                                WalletSwapDetector detector, NotificationPort notificationPort,
+                                SignalIntelligenceService signalIntelligenceService) {
         this.properties = properties; this.registry = registry; this.provider = provider;
         this.detector = detector; this.notificationPort = notificationPort;
+        this.signalIntelligenceService = signalIntelligenceService;
     }
 
     @Scheduled(fixedDelayString = "${wallet.poll-interval-ms:60000}")
@@ -41,6 +46,10 @@ public class WalletPollingService {
                             String message = "WALLET ACTIVITY\n\nWallet: %s\nAction: %s\nToken: %s\nAmount: %s\nTx: %s\n\nDescriptive intelligence only."
                                     .formatted(trade.walletAddress(), trade.side(), trade.tokenAddress(), trade.amountToken(), trade.transactionSignature());
                             properties.parsedAlertChatIds().forEach(chatId -> notificationPort.send(new NotificationPort.Notification(chatId, message)));
+                        }
+                        if (trade.side() == com.trading.nevcoin.wallet.domain.WalletTrade.Side.BUY) {
+                            signalIntelligenceService.observe(new WalletSignalEvent(trade.walletAddress(), trade.tokenAddress(),
+                                    trade.transactionSignature(), trade.amountUsd(), trade.timestamp()), java.time.Instant.now());
                         }
                     });
                 }

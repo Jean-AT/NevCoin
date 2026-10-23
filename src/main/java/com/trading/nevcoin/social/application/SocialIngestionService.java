@@ -16,6 +16,7 @@ import com.trading.nevcoin.social.domain.SocialEventType;
 import com.trading.nevcoin.social.domain.SocialEvidence;
 import com.trading.nevcoin.social.application.ports.SocialEventStore;
 import com.trading.nevcoin.social.domain.SocialEvent;
+import com.trading.nevcoin.signal.application.SignalIntelligenceService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -39,12 +40,15 @@ public class SocialIngestionService {
     private final NotificationPort notifications;
     private final SocialEntityExtractor entityExtractor;
     private final TokenAssociationResolver associationResolver;
+    private final SocialSignalService socialSignalService;
+    private final SignalIntelligenceService signalIntelligenceService;
 
     public SocialIngestionService(SocialProperties properties, SocialEventProvider provider, SocialEventStore store,
                                   SocialRawEventStore rawEventStore, SocialCursorStore cursorStore,
                                   SocialProcessingFailureStore failureStore,
                                   MarketTokenMetadataPort metadata, NotificationPort notifications,
-                                  SocialEntityExtractor entityExtractor, TokenAssociationResolver associationResolver) {
+                                  SocialEntityExtractor entityExtractor, TokenAssociationResolver associationResolver,
+                                  SocialSignalService socialSignalService, SignalIntelligenceService signalIntelligenceService) {
         this.properties = properties;
         this.provider = provider;
         this.store = store;
@@ -55,6 +59,8 @@ public class SocialIngestionService {
         this.notifications = notifications;
         this.entityExtractor = entityExtractor;
         this.associationResolver = associationResolver;
+        this.socialSignalService = socialSignalService;
+        this.signalIntelligenceService = signalIntelligenceService;
     }
 
     @Scheduled(fixedDelayString = "${social.poll-interval-ms:120000}")
@@ -71,7 +77,12 @@ public class SocialIngestionService {
                         .map(this::normalize)
                         .map(this::associateToken)
                         .filter(event -> store.saveIfNew(event))
-                        .forEach(this::alert);
+                        .forEach(event -> {
+                            alert(event);
+                            Instant detectedAt = Instant.now();
+                            socialSignalService.observe(event, detectedAt)
+                                    .forEach(signal -> signalIntelligenceService.observe(signal, detectedAt));
+                        });
                 result.failures().forEach(failure -> log.warn("Social provider failure source={} category={} retryable={} message={}",
                         url, failure.category(), failure.retryable(), failure.message()));
                 if (result.failures().stream().noneMatch(com.trading.nevcoin.social.application.ports.SocialProviderFailure::retryable)) {

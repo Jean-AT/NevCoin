@@ -1,0 +1,11 @@
+package com.trading.nevcoin.social.domain;
+
+public enum SocialSignalType {
+    DIRECT_TOKEN_MENTION,
+    INFLUENCER_TOKEN_MENTION,
+    MENTION_ACCELERATION,
+    MULTI_SOURCE_MENTION,
+    NARRATIVE_EMERGENCE,
+    OFFICIAL_ANNOUNCEMENT,
+    SOCIAL_ACTIVITY_SPIKE
+}
