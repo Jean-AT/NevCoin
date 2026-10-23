@@ -10,6 +10,14 @@ import com.trading.nevcoin.notification.application.ports.MarketAlertSettingsPor
 import com.trading.nevcoin.notification.application.ports.PaperTradingPort;
 import com.trading.nevcoin.market.application.ports.MarketSignalQueryPort;
 import com.trading.nevcoin.social.application.ports.SocialEventQueryPort;
+import com.trading.nevcoin.social.application.ports.SocialSignalStore;
+import com.trading.nevcoin.social.domain.SocialSignal;
+import com.trading.nevcoin.signal.application.SignalIntelligenceService;
+import com.trading.nevcoin.signal.domain.CrossDomainSignal;
+import com.trading.nevcoin.paper.validation.application.PaperValidationService;
+import com.trading.nevcoin.paper.validation.domain.PaperValidationRequest;
+import com.trading.nevcoin.paper.validation.domain.PaperValidationResult;
+import com.trading.nevcoin.trade.domain.PaperTrade;
 import com.trading.nevcoin.notification.domain.TelegramAccessPolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,6 +54,9 @@ public class TelegramCommandHandler {
             /alerts-off <mint|symbol|all> - disable market alerts
             /signals - show active market signals
             /social - show recent social intelligence events
+            /social-signals - show active social signals
+            /cross-signals - show active Social + Market + Wallet signals
+            /paper-validate [hours] - validate recent signals in paper mode
             /paper-status - show simulated portfolio
             /paper-on - enable simulated trading
             /paper-off - disable simulated trading
@@ -69,6 +80,9 @@ public class TelegramCommandHandler {
     private final PaperTradingPort paperTradingPort;
     private final MarketSignalQueryPort marketSignalQueryPort;
     private final SocialEventQueryPort socialEventQueryPort;
+    private final SocialSignalStore socialSignalStore;
+    private final SignalIntelligenceService signalIntelligenceService;
+    private final PaperValidationService paperValidationService;
 
     public TelegramCommandHandler(TelegramAccessPolicy accessPolicy, SystemStatusPort systemStatusPort) {
         this(accessPolicy, systemStatusPort, new TokenQueryPort() {
@@ -84,7 +98,7 @@ public class TelegramCommandHandler {
         }, new WalletWatchlistCommandPort() {
                 @Override public void watch(String address) { }
                 @Override public void unwatch(String address) { }
-                }, defaultAlertSettings(), defaultPaperTrading(), defaultSignalQuery(), defaultSocialQuery());
+                }, defaultAlertSettings(), defaultPaperTrading(), defaultSignalQuery(), defaultSocialQuery(), null, null, null);
     }
 
     public TelegramCommandHandler(
@@ -97,7 +111,7 @@ public class TelegramCommandHandler {
             WalletWatchlistCommandPort walletWatchlistCommandPort) {
         this(accessPolicy, systemStatusPort, tokenQueryPort, tokenMarketDataPort,
                 tokenWatchlistCommandPort, walletQueryPort, walletWatchlistCommandPort,
-                defaultAlertSettings(), defaultPaperTrading(), defaultSignalQuery(), defaultSocialQuery());
+                defaultAlertSettings(), defaultPaperTrading(), defaultSignalQuery(), defaultSocialQuery(), null, null, null);
     }
 
     public TelegramCommandHandler(
@@ -111,7 +125,7 @@ public class TelegramCommandHandler {
             MarketAlertSettingsPort marketAlertSettingsPort) {
         this(accessPolicy, systemStatusPort, tokenQueryPort, tokenMarketDataPort,
                 tokenWatchlistCommandPort, walletQueryPort, walletWatchlistCommandPort,
-                marketAlertSettingsPort, defaultPaperTrading(), defaultSignalQuery(), defaultSocialQuery());
+                marketAlertSettingsPort, defaultPaperTrading(), defaultSignalQuery(), defaultSocialQuery(), null, null, null);
     }
 
     public TelegramCommandHandler(
@@ -126,7 +140,24 @@ public class TelegramCommandHandler {
             PaperTradingPort paperTradingPort) {
         this(accessPolicy, systemStatusPort, tokenQueryPort, tokenMarketDataPort,
                 tokenWatchlistCommandPort, walletQueryPort, walletWatchlistCommandPort,
-                marketAlertSettingsPort, paperTradingPort, defaultSignalQuery(), defaultSocialQuery());
+                marketAlertSettingsPort, paperTradingPort, defaultSignalQuery(), defaultSocialQuery(), null, null, null);
+    }
+
+    public TelegramCommandHandler(
+            TelegramAccessPolicy accessPolicy,
+            SystemStatusPort systemStatusPort,
+            TokenQueryPort tokenQueryPort,
+            TokenMarketDataPort tokenMarketDataPort,
+            TokenWatchlistCommandPort tokenWatchlistCommandPort,
+            WalletQueryPort walletQueryPort,
+            WalletWatchlistCommandPort walletWatchlistCommandPort,
+            MarketAlertSettingsPort marketAlertSettingsPort,
+            PaperTradingPort paperTradingPort,
+            MarketSignalQueryPort marketSignalQueryPort,
+            SocialEventQueryPort socialEventQueryPort) {
+        this(accessPolicy, systemStatusPort, tokenQueryPort, tokenMarketDataPort, tokenWatchlistCommandPort,
+                walletQueryPort, walletWatchlistCommandPort, marketAlertSettingsPort, paperTradingPort,
+                marketSignalQueryPort, socialEventQueryPort, null, null, null);
     }
 
     @Autowired
@@ -141,7 +172,10 @@ public class TelegramCommandHandler {
             MarketAlertSettingsPort marketAlertSettingsPort,
             PaperTradingPort paperTradingPort,
             MarketSignalQueryPort marketSignalQueryPort,
-            SocialEventQueryPort socialEventQueryPort) {
+            SocialEventQueryPort socialEventQueryPort,
+            SocialSignalStore socialSignalStore,
+            SignalIntelligenceService signalIntelligenceService,
+            PaperValidationService paperValidationService) {
         this.accessPolicy = accessPolicy;
         this.systemStatusPort = systemStatusPort;
         this.tokenQueryPort = tokenQueryPort;
@@ -153,6 +187,9 @@ public class TelegramCommandHandler {
         this.paperTradingPort = paperTradingPort;
         this.marketSignalQueryPort = marketSignalQueryPort;
         this.socialEventQueryPort = socialEventQueryPort;
+        this.socialSignalStore = socialSignalStore;
+        this.signalIntelligenceService = signalIntelligenceService;
+        this.paperValidationService = paperValidationService;
     }
 
     /** Test and embedding-friendly constructor retaining the pre-social API. */
@@ -169,7 +206,7 @@ public class TelegramCommandHandler {
             MarketSignalQueryPort marketSignalQueryPort) {
         this(accessPolicy, systemStatusPort, tokenQueryPort, tokenMarketDataPort,
                 tokenWatchlistCommandPort, walletQueryPort, walletWatchlistCommandPort,
-                marketAlertSettingsPort, paperTradingPort, marketSignalQueryPort, defaultSocialQuery());
+                marketAlertSettingsPort, paperTradingPort, marketSignalQueryPort, defaultSocialQuery(), null, null, null);
     }
 
     public Optional<String> handle(long chatId, String text) {
@@ -193,6 +230,9 @@ public class TelegramCommandHandler {
             case "/alerts-off" -> Optional.of(updateAlerts(argument(parts), false));
             case "/signals" -> Optional.of(signalsMessage());
             case "/social" -> Optional.of(socialMessage());
+            case "/social-signals" -> Optional.of(socialSignalsMessage());
+            case "/cross-signals" -> Optional.of(crossSignalsMessage());
+            case "/paper-validate" -> Optional.of(paperValidationMessage(argument(parts)));
             case "/paper-status" -> Optional.of(paperStatusMessage());
             case "/paper-on" -> Optional.of(setPaperTrading(true));
             case "/paper-off" -> Optional.of(setPaperTrading(false));
@@ -346,6 +386,77 @@ public class TelegramCommandHandler {
         return message.toString().trim();
     }
 
+    private String socialSignalsMessage() {
+        if (socialSignalStore == null) {
+            return "Social signals are not configured in this runtime.";
+        }
+        Instant now = Instant.now();
+        var signals = socialSignalStore.recent(now.minusSeconds(24 * 60 * 60L)).stream()
+                .filter(signal -> signal.isActiveAt(now)).toList();
+        if (signals.isEmpty()) return "Active social signals (last 24h)\nNone.";
+        StringBuilder message = new StringBuilder("Active social signals (last 24h)\n\n");
+        signals.forEach(signal -> message.append("- ").append(signalTokenName(signal.tokenAddress()))
+                .append(" | ").append(signal.signalType())
+                .append(" | confidence: ").append(signal.confidence())
+                .append(" | observed: ").append(signal.lastObservedAt()).append("\n")
+                .append("  Evidence: ").append(signal.evidence().stream()
+                        .map(evidence -> evidence.evidenceType() + "=" + evidence.value())
+                        .collect(Collectors.joining("; "))).append("\n"));
+        return message.toString().trim();
+    }
+
+    private String crossSignalsMessage() {
+        if (signalIntelligenceService == null) {
+            return "Cross-domain signals are not configured in this runtime.";
+        }
+        var signals = signalIntelligenceService.highPriority(Instant.now());
+        if (signals.isEmpty()) return "Active cross-domain signals\nNone.";
+        StringBuilder message = new StringBuilder("Active cross-domain signals\n\n");
+        signals.forEach(signal -> message.append("- ").append(signalTokenName(signal.tokenAddress()))
+                .append(" | priority: ").append(signal.priority())
+                .append(" | confidence: ").append(signal.confidence())
+                .append(" | components: ").append(signal.components())
+                .append(" | detected: ").append(signal.detectedAt()).append("\n")
+                .append("  Evidence: ").append(signal.evidence().stream()
+                        .map(evidence -> evidence.component() + "=" + evidence.description())
+                        .collect(Collectors.joining("; "))).append("\n"));
+        message.append("Descriptive intelligence only. No trade was executed.");
+        return message.toString();
+    }
+
+    private String paperValidationMessage(String hoursArgument) {
+        if (paperValidationService == null) {
+            return "Paper validation is not configured in this runtime.";
+        }
+        int hours = 24;
+        if (!hoursArgument.isBlank()) {
+            try {
+                hours = Integer.parseInt(hoursArgument);
+                if (hours < 1 || hours > 168) return "Usage: /paper-validate [hours] (1-168)";
+            } catch (NumberFormatException exception) {
+                return "Usage: /paper-validate [hours] (1-168)";
+            }
+        }
+        Instant to = Instant.now();
+        PaperValidationRequest request = new PaperValidationRequest(
+                to.minusSeconds(hours * 3600L), to, new BigDecimal("1000"), new BigDecimal("100"),
+                BigDecimal.ZERO, 0, 5, java.util.Set.of(), java.util.Set.of());
+        try {
+            PaperValidationResult result = paperValidationService.validate(request);
+            return "Paper validation (last " + hours + "h)\n"
+                    + "Initial cash: " + formatUsd(result.initialCashUsd()) + "\n"
+                    + "Final cash: " + formatUsd(result.finalCashUsd()) + "\n"
+                    + "Return: " + formatSignedUsd(result.totalReturnUsd()) + " ("
+                    + formatPercent(result.totalReturnPercent()) + ")\n"
+                    + "Trades: " + result.totalTrades() + "\n"
+                    + "Win rate: " + formatPercent(result.winRate()) + "\n"
+                    + "Max drawdown: " + formatUsd(result.maxDrawdownUsd()) + "\n\n"
+                    + "Descriptive simulation only. No trade was executed.";
+        } catch (IllegalStateException exception) {
+            return "Paper validation unavailable: historical replay is not configured yet.";
+        }
+    }
+
     private String signalTokenName(String mintAddress) {
         TokenQueryPort.TokenSummary token = tokenQueryPort.find(mintAddress);
         return token == null ? mintAddress : tokenDisplayName(token);
@@ -396,24 +507,34 @@ public class TelegramCommandHandler {
 
     private String paperStatusMessage() {
         PaperTradingPort.PaperStatus status = paperTradingPort.status();
+        BigDecimal realizedPnl = status.recentTrades().stream()
+                .map(PaperTrade::realizedPnlUsd)
+                .filter(java.util.Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
         StringBuilder message = new StringBuilder("Paper trading: ")
                 .append(status.enabled() ? "ON" : "OFF")
                 .append("\nCash: ").append(formatUsd(status.cashUsd()))
+                .append("\nRecent realized PnL: ").append(formatSignedUsd(realizedPnl))
                 .append("\nPositions:");
         if (status.positions().isEmpty()) {
             message.append(" none");
         } else {
-            status.positions().forEach(position -> message.append("\n- ")
-                    .append(position.tokenAddress())
-                    .append(" | quantity: ").append(position.quantity())
-                    .append(" | avg entry: ").append(formatPrice(position.averageEntryPriceUsd())));
+            status.positions().forEach(position -> {
+                TokenQueryPort.TokenSummary token = tokenQueryPort.find(position.tokenAddress());
+                message.append("\n- ").append(token == null ? shortenMint(position.tokenAddress()) : tokenDisplayName(token))
+                        .append("\n  Mint: ").append(shortenMint(position.tokenAddress()))
+                        .append("\n  Quantity: ").append(formatQuantity(position.quantity()))
+                        .append("\n  Average entry: ").append(formatPrice(position.averageEntryPriceUsd()));
+            });
         }
         if (!status.recentTrades().isEmpty()) {
             message.append("\nRecent simulated trades:");
             status.recentTrades().forEach(trade -> {
-                message.append("\n- ")
-                    .append(trade.action()).append(" ").append(trade.tokenAddress())
-                    .append(" | ").append(formatUsd(trade.notionalUsd()))
+                TokenQueryPort.TokenSummary token = tokenQueryPort.find(trade.tokenAddress());
+                message.append("\n- ").append(trade.action()).append(" ")
+                    .append(token == null ? shortenMint(trade.tokenAddress()) : tokenDisplayName(token))
+                    .append(" | amount: ").append(formatUsd(trade.notionalUsd()))
+                    .append(" | qty: ").append(formatQuantity(trade.quantity()))
                     .append(" @ ").append(formatPrice(trade.priceUsd()));
             if (trade.realizedPnlUsd() != null) {
                 message.append(" | PnL: ").append(formatUsd(trade.realizedPnlUsd()));
@@ -497,9 +618,25 @@ public class TelegramCommandHandler {
     private String formatUsd(BigDecimal value) {
         if (value == null) return "-";
         NumberFormat format = NumberFormat.getNumberInstance(Locale.US);
-        format.setMinimumFractionDigits(2);
-        format.setMaximumFractionDigits(2);
+        int decimals = value.abs().compareTo(new BigDecimal("0.01")) < 0 ? 6 : 2;
+        format.setMinimumFractionDigits(decimals);
+        format.setMaximumFractionDigits(decimals);
         return "$" + format.format(value);
+    }
+
+    private String formatSignedUsd(BigDecimal value) {
+        if (value == null) return "-";
+        return (value.signum() > 0 ? "+" : "") + formatUsd(value);
+    }
+
+    private String formatQuantity(BigDecimal value) {
+        if (value == null) return "-";
+        return value.stripTrailingZeros().toPlainString();
+    }
+
+    private String shortenMint(String mint) {
+        if (mint == null || mint.length() <= 14) return mint;
+        return mint.substring(0, 6) + "…" + mint.substring(mint.length() - 6);
     }
 
     private String formatPercent(BigDecimal value) {
