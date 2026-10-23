@@ -1,7 +1,5 @@
 package com.trading.nevcoin.history.infrastructure.persistence;
 
-import com.trading.nevcoin.history.domain.ReplayDataset;
-import com.trading.nevcoin.paper.validation.application.ports.HistoricalReplayPort;
 import com.trading.nevcoin.paper.validation.domain.PaperValidationRequest;
 import com.trading.nevcoin.paper.validation.domain.ReplayPricePoint;
 import com.trading.nevcoin.paper.validation.domain.ReplaySignal;
@@ -20,7 +18,7 @@ class PaperHistoricalReplayAdapterTest {
     @Test
     void convertsCanonicalReplayToPaperValidationContract() {
         var canonical = new com.trading.nevcoin.history.domain.ReplayDataset(
-                List.of(), List.of(),
+                BASE, BASE.plusSeconds(10), BASE.plusSeconds(10), List.of(), List.of(),
                 List.of(new com.trading.nevcoin.market.domain.MarketTick("MINT", BASE.plusSeconds(1), BASE.plusSeconds(1),
                         BigDecimal.ONE, BigDecimal.TEN, BigDecimal.TEN, BigDecimal.ZERO, "test")),
                 List.of(), List.of(new com.trading.nevcoin.social.domain.SocialSignal("signal", "MINT",
@@ -28,7 +26,8 @@ class PaperHistoricalReplayAdapterTest {
                         BigDecimal.ONE, BASE, BASE, BASE.plusSeconds(10), 1, 1, List.of(), "social-v1")),
                 List.of(), Set.of("social-v1"));
 
-        var adapter = new PaperHistoricalReplayAdapter(request -> canonical);
+        var adapter = new PaperHistoricalReplayAdapter(
+                (com.trading.nevcoin.history.application.ports.HistoricalReplayPort) request -> canonical);
         var request = new PaperValidationRequest(BASE, BASE.plusSeconds(10), BigDecimal.TEN, BigDecimal.ONE,
                 BigDecimal.ZERO, 0, 1, Set.of(), Set.of(), BigDecimal.ZERO, BigDecimal.ZERO);
 
