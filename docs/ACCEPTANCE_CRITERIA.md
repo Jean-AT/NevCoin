@@ -51,6 +51,7 @@
 - Social events record source, publication time, detection time, hashes, related tokens, and confidence.
 - Cross-signals include market, wallet, and social evidence, freshness, confidence, priority, and expiry.
 - `/social` exposes the last 24 hours of normalized social events and clearly reports when no provider is configured.
+- RSS/Atom social feeds are disabled by default, configurable through environment variables, deduplicated by source/external id, persisted with timestamps/evidence, and alert only for events associated with a watched token.
 
 ## Validation and Definition of Done
 

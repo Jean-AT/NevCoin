@@ -68,12 +68,19 @@ Send `/help` to the bot. The allowlist is strict: only the numeric chat IDs in
 
 Available commands include `/status`, `/health`, `/help`, `/tokens`,
 `/token <mint|symbol>`, `/alerts`, `/alerts-on <mint|symbol|all>`,
-`/alerts-off <mint|symbol|all>`, `/signals`, `/paper-status`, `/paper-on`,
-`/paper-off`, `/paper-reset`, `/wallets`, and `/wallet <address>`. Paper
+`/alerts-off <mint|symbol|all>`, `/signals`, `/cross-signals`, `/social`,
+`/social-signals`, `/paper-status`, `/paper-on`, `/paper-off`,
+`/paper-reset`, `/paper-validate [hours]`, `/wallets`, and `/wallet <address>`.
+Paper
 trading sends simulated decision alerts and enforces configured risk limits,
 but it never signs or sends a blockchain transaction.
-`/social` shows normalized social events from the last 24 hours; until a
-provider is configured it reports an empty state.
+`/social` shows normalized social events from the last 24 hours. RSS/Atom
+sources are configured with `SOCIAL_RSS_URLS` (comma-separated); alerts are
+controlled with `SOCIAL_ALERTS_ENABLED` and `SOCIAL_ALERT_CHAT_IDS`.
+
+Notifications are first persisted in PostgreSQL's durable outbox and then
+delivered to Telegram with bounded retries. A temporary Telegram outage does
+not lose a persisted alert.
 
 Never commit `.env` or paste `TELEGRAM_BOT_TOKEN` into source code, logs, or a
 chat. Telegram uses long polling, so no public webhook URL is required.
