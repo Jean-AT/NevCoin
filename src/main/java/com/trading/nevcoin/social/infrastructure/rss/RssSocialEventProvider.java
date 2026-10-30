@@ -58,12 +58,16 @@ public class RssSocialEventProvider implements SocialEventProvider {
                 String summary = first(child(node, "description"), child(node, "summary"), child(node, "content"));
                 String text = (title + (summary == null ? "" : " — " + summary)).trim();
                 String id = first(child(node, "guid"), child(node, "id"), child(node, "link"), sourceUrl + "#" + i);
+                if (cursor != null && cursor.equals(id)) {
+                    break;
+                }
                 Instant observed = parseInstant(first(child(node, "pubDate"), child(node, "published"), child(node, "updated")));
                 events.add(new RawSocialEvent("rss", sourceId, child(node, "author"), id,
                         first(child(node, "link"), sourceUrl), observed, Instant.now(), text,
                         Map.of("feedUrl", sourceUrl)));
             }
-            return new SocialFetchResult(events, cursor, Instant.now(), List.of());
+            String nextCursor = events.isEmpty() ? cursor : events.getFirst().externalEventId();
+            return new SocialFetchResult(events, nextCursor, Instant.now(), List.of());
         } catch (Exception exception) {
             log.warn("Social RSS feed failed url={}: {}", sourceUrl, exception.getMessage());
             return new SocialFetchResult(List.of(), cursor, Instant.now(), List.of(
