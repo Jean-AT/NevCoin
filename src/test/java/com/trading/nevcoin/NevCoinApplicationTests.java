@@ -24,6 +24,11 @@ class NevCoinApplicationTests {
         registry.add("spring.datasource.username", POSTGRES::getUsername);
         registry.add("spring.datasource.password", POSTGRES::getPassword);
         registry.add("telegram.enabled", () -> false);
+        registry.add("market.enabled", () -> false);
+        registry.add("market.stream-enabled", () -> false);
+        registry.add("social.enabled", () -> false);
+        registry.add("wallet.enabled", () -> false);
+        registry.add("paper.enabled", () -> false);
     }
 
     @Test

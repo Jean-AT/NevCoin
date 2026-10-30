@@ -15,6 +15,8 @@ import com.trading.nevcoin.social.domain.SocialEventStatus;
 import com.trading.nevcoin.social.domain.SocialEventType;
 import com.trading.nevcoin.social.domain.SocialEvidence;
 import com.trading.nevcoin.social.application.ports.SocialEventStore;
+import com.trading.nevcoin.social.application.ports.SocialSourceStateStore;
+import com.trading.nevcoin.social.application.ports.SocialProviderFailure;
 import com.trading.nevcoin.social.domain.SocialEvent;
 import com.trading.nevcoin.signal.application.SignalIntelligenceService;
 import org.slf4j.Logger;
@@ -26,6 +28,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.time.Instant;
+import java.time.Duration;
 
 @Service
 public class SocialIngestionService {
@@ -42,13 +45,15 @@ public class SocialIngestionService {
     private final TokenAssociationResolver associationResolver;
     private final SocialSignalService socialSignalService;
     private final SignalIntelligenceService signalIntelligenceService;
+    private final SocialSourceStateStore sourceStateStore;
 
     public SocialIngestionService(SocialProperties properties, SocialEventProvider provider, SocialEventStore store,
                                   SocialRawEventStore rawEventStore, SocialCursorStore cursorStore,
                                   SocialProcessingFailureStore failureStore,
                                   MarketTokenMetadataPort metadata, NotificationPort notifications,
                                   SocialEntityExtractor entityExtractor, TokenAssociationResolver associationResolver,
-                                  SocialSignalService socialSignalService, SignalIntelligenceService signalIntelligenceService) {
+                                  SocialSignalService socialSignalService, SignalIntelligenceService signalIntelligenceService,
+                                  SocialSourceStateStore sourceStateStore) {
         this.properties = properties;
         this.provider = provider;
         this.store = store;
@@ -61,6 +66,7 @@ public class SocialIngestionService {
         this.associationResolver = associationResolver;
         this.socialSignalService = socialSignalService;
         this.signalIntelligenceService = signalIntelligenceService;
+        this.sourceStateStore = sourceStateStore;
     }
 
     @Scheduled(fixedDelayString = "${social.poll-interval-ms:120000}")
@@ -69,6 +75,12 @@ public class SocialIngestionService {
         for (String url : urls()) {
             try {
                 String sourceId = "rss:" + url;
+                Instant startedAt = Instant.now();
+                var state = sourceStateStore.find(sourceId).orElse(null);
+                if (state != null && state.nextAttemptAt() != null && state.nextAttemptAt().isAfter(startedAt)) {
+                    continue;
+                }
+                sourceStateStore.markAttempt(sourceId, startedAt);
                 String cursor = cursorStore.current(sourceId).orElse(null);
                 SocialFetchResult result = provider.fetch(sourceId, url, cursor, properties.getMaxEventsPerFeed());
                 result.events().forEach(rawEventStore::saveIfNew);
@@ -88,10 +100,29 @@ public class SocialIngestionService {
                 if (result.failures().stream().noneMatch(com.trading.nevcoin.social.application.ports.SocialProviderFailure::retryable)) {
                     cursorStore.advance(sourceId, result.nextCursor(), result.fetchedAt());
                 }
+                long latencyMs = Duration.between(startedAt, Instant.now()).toMillis();
+                if (result.failures().isEmpty()) {
+                    sourceStateStore.markSuccess(sourceId, Instant.now(), latencyMs);
+                } else {
+                    SocialProviderFailure failure = result.failures().getFirst();
+                    sourceStateStore.markFailure(sourceId, Instant.now(), failure,
+                            retryBackoff(state == null ? 0 : state.consecutiveFailures(), failure.retryable()), latencyMs);
+                }
             } catch (RuntimeException exception) {
                 log.warn("Social ingestion failed url={}", url, exception);
+                String sourceId = "rss:" + url;
+                sourceStateStore.markFailure(sourceId, Instant.now(),
+                        new SocialProviderFailure("ingestion", "RUNTIME_ERROR", exception.getMessage(), true),
+                        retryBackoff(sourceStateStore.find(sourceId).map(SocialSourceStateStore.State::consecutiveFailures).orElse(0), true),
+                        0);
             }
         }
+    }
+
+    private Duration retryBackoff(int consecutiveFailures, boolean retryable) {
+        if (!retryable) return Duration.ofMinutes(30);
+        long seconds = 30L * (1L << Math.min(consecutiveFailures, 6));
+        return Duration.ofSeconds(Math.min(seconds, 1800L));
     }
 
     private SocialEvent normalize(RawSocialEvent raw) {
