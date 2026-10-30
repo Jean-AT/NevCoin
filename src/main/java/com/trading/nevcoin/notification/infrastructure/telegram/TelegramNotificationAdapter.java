@@ -3,7 +3,7 @@ package com.trading.nevcoin.notification.infrastructure.telegram;
 import com.trading.nevcoin.notification.application.ports.NotificationPort;
 import org.springframework.stereotype.Component;
 
-@Component
+@Component("telegramNotificationPort")
 public class TelegramNotificationAdapter implements NotificationPort {
 
     private final TelegramApiClient telegramApiClient;

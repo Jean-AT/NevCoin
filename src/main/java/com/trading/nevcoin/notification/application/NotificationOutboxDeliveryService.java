@@ -6,6 +6,7 @@ import com.trading.nevcoin.notification.domain.NotificationOutboxEntry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -21,7 +22,8 @@ public class NotificationOutboxDeliveryService {
     private final NotificationPort notifications;
     private final NotificationOutboxProperties properties;
 
-    public NotificationOutboxDeliveryService(NotificationOutboxStore store, NotificationPort notifications,
+    public NotificationOutboxDeliveryService(NotificationOutboxStore store,
+                                             @Qualifier("telegramNotificationPort") NotificationPort notifications,
                                              NotificationOutboxProperties properties) {
         this.store = store;
         this.notifications = notifications;
