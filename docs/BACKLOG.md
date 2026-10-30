@@ -47,11 +47,12 @@
 - [x] **COMPLETADO** — Add configurable RSS/Atom social sources, polling, deduplication, and watchlist token association.
 - [x] **COMPLETADO** — Persist social events and expose `/social` plus token-associated alerts.
 - [x] **COMPLETADO** — Generate deterministic, evidence-backed `SocialSignal` records for token-associated events; events without a token and future-dated events do not create token signals.
-- [ ] **INCOMPLETO** — Refactor the initial RSS implementation into durable raw-event ingestion, source/cursor state, versioned normalization, evidence-backed token associations, and descriptive social signals. The completed items above describe the initial prototype; they do not mean this hardening scope is complete.
+- [x] **COMPLETADO** — Harden RSS/Atom ingestion with durable raw events, source cursors, versioned normalization, evidence-backed token associations, deterministic social signals, persisted source health, bounded backoff, and durable Telegram delivery.
+- [ ] **INCOMPLETO (TRACKING DIFERIDO)** — Add operator-managed social accounts/sources (for example direct X/account tracking or streaming providers) with per-account priorities and commands. The current build intentionally keeps RSS/Atom as its supported social provider.
 
 ### Social Intelligence implementation guidance
 
-The current RSS/Atom implementation is a working prototype, not the final Social Intelligence contract. Preserve the existing `social_events` data with additive Flyway migrations; do not rewrite or remove an applied migration. Plan a backfill/default policy for legacy rows and prevent deployment from replaying old events as new alerts.
+The current RSS/Atom provider is the supported Social Intelligence source for this milestone. Preserve the existing `social_events` data with additive Flyway migrations; do not rewrite or remove an applied migration. New account/stream providers remain a separate tracking milestone.
 
 Implement the hardening work as reviewable slices, keeping the application buildable after each slice:
 
