@@ -1,0 +1,60 @@
+services:
+  - type: web
+    name: nevcoin
+    runtime: docker
+    plan: free
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: nevcoin-db
+          property: connectionString
+      - key: DATABASE_USERNAME
+        fromDatabase:
+          name: nevcoin-db
+          property: user
+      - key: DATABASE_PASSWORD
+        fromDatabase:
+          name: nevcoin-db
+          property: password
+      - key: TELEGRAM_ENABLED
+        value: "true"
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_ALLOWED_CHAT_IDS
+        sync: false
+      - key: MARKET_ENABLED
+        value: "true"
+      - key: MARKET_STREAM_ENABLED
+        value: "true"
+      - key: HELIUS_API_KEY
+        sync: false
+      - key: MARKET_WATCH_MINTS
+        sync: false
+      - key: MARKET_ALERTS_ENABLED
+        value: "true"
+      - key: MARKET_ALERT_CHAT_IDS
+        sync: false
+      - key: PAPER_TRADING_ENABLED
+        value: "true"
+      - key: PAPER_ALERTS_ENABLED
+        value: "true"
+      - key: PAPER_ALERT_CHAT_IDS
+        sync: false
+      - key: SOCIAL_ENABLED
+        value: "true"
+      - key: SOCIAL_RSS_URLS
+        sync: false
+      - key: SOCIAL_ALERTS_ENABLED
+        value: "true"
+      - key: SOCIAL_ALERT_CHAT_IDS
+        sync: false
+      - key: NOTIFICATION_OUTBOX_ENABLED
+        value: "true"
+
+databases:
+  - name: nevcoin-db
+    plan: free
+    postgresMajorVersion: "16"
+    databaseName: nevcoin
+    user: nevcoin
