@@ -29,6 +29,7 @@ class NevCoinApplicationTests {
         registry.add("social.enabled", () -> false);
         registry.add("wallet.enabled", () -> false);
         registry.add("paper.enabled", () -> false);
+        registry.add("spring.task.scheduling.enabled", () -> false);
     }
 
     @Test
