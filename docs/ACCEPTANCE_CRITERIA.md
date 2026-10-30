@@ -6,7 +6,7 @@
 - PostgreSQL starts through local infrastructure, migrations run cleanly, and the application can restart without corrupting state.
 - Actuator exposes working health/readiness checks and baseline metrics.
 - The Telegram adapter connects through long polling without a public endpoint.
-- `/status`, `/health`, and `/help` route through application services and return structured English responses.
+- `/status`, `/health`, and `/help` route through application services and return structured, user-friendly responses.
 - A chat ID outside `TELEGRAM_ALLOWED_CHAT_IDS` cannot execute commands and creates a security log entry.
 - Tokens and database credentials are supplied through configuration and do not appear in source code or logs.
 
@@ -14,7 +14,7 @@
 
 - Long polling is disabled unless `TELEGRAM_ENABLED=true`.
 - Enabling Telegram without a bot token or allowlisted chat ID fails fast during startup.
-- `/status`, `/health`, and `/help` return structured English responses through application services.
+- `/status`, `/health`, and `/help` return structured, user-friendly responses through application services, with examples for the next action where applicable.
 - Commands may include a bot mention, such as `/health@nevcoin_bot`.
 - Unauthorized chat IDs receive no response and are security logged.
 - Telegram API errors retry with a bounded backoff and never expose the bot token in logs.

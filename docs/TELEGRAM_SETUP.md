@@ -66,6 +66,10 @@ Start the local dependencies and the application:
 Send `/help` to the bot. The allowlist is strict: only the numeric chat IDs in
 `TELEGRAM_ALLOWED_CHAT_IDS` receive responses.
 
+Command replies are written in plain Spanish and include an example or the
+next suggested action when an argument is missing. `/help` is the best place
+to start if you are not familiar with the bot.
+
 Available commands include `/status`, `/health`, `/help`, `/tokens`,
 `/token <mint|symbol>`, `/alerts`, `/alerts-on <mint|symbol|all>`,
 `/alerts-off <mint|symbol|all>`, `/signals`, `/cross-signals`, `/social`,

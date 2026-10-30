@@ -37,17 +37,28 @@ class TelegramCommandHandlerTest {
 
     @Test
     void returnsHelpForHelpCommand() {
-        assertTrue(handler.handle(ALLOWED_CHAT_ID, "/help").orElseThrow().contains("/status"));
+        String help = handler.handle(ALLOWED_CHAT_ID, "/help").orElseThrow();
+        assertTrue(help.contains("/status"));
+        assertTrue(help.contains("Ejemplos:"));
+        assertTrue(help.contains("No compra ni vende"));
+    }
+
+    @Test
+    void givesAnActionableHintWhenACommandNeedsAnArgument() {
+        String response = handler.handle(ALLOWED_CHAT_ID, "/token").orElseThrow();
+
+        assertTrue(response.contains("/token ORE"));
+        assertTrue(response.contains("dirección completa"));
     }
 
     @Test
     void supportsBotMentionOnCommand() {
-        assertEquals("Health: UP\nTrading: disabled", handler.handle(ALLOWED_CHAT_ID, "/health@nevcoin_bot").orElseThrow());
+        assertTrue(handler.handle(ALLOWED_CHAT_ID, "/health@nevcoin_bot").orElseThrow().contains("Servicios: operativos"));
     }
 
     @Test
     void unknownCommandReturnsHelp() {
-        assertTrue(handler.handle(ALLOWED_CHAT_ID, "/buy TOKEN").orElseThrow().contains("Unknown command"));
+        assertTrue(handler.handle(ALLOWED_CHAT_ID, "/buy TOKEN").orElseThrow().contains("No reconocí ese comando"));
     }
 
     @Test
@@ -74,11 +85,11 @@ class TelegramCommandHandlerTest {
 
         String response = marketHandler.handle(ALLOWED_CHAT_ID, "/token mint-address").orElseThrow();
 
-        assertTrue(response.contains("Token: MEME"));
-        assertTrue(response.contains("Price: $0.00001234"));
-        assertTrue(response.contains("Market cap: $850,000,000.00"));
-        assertTrue(response.contains("Buys/Sells 5m: 120 / 84"));
-        assertTrue(response.contains("Source: DEX Screener / raydium"));
+        assertTrue(response.contains("MEME"));
+        assertTrue(response.contains("Precio: $0.00001234"));
+        assertTrue(response.contains("Capitalización: $850,000,000.00"));
+        assertTrue(response.contains("Compras/Ventas (5 min): 120 / 84"));
+        assertTrue(response.contains("Fuente: DEX Screener / raydium"));
     }
 
     @Test
@@ -108,7 +119,7 @@ class TelegramCommandHandlerTest {
 
         String response = marketHandler.handle(ALLOWED_CHAT_ID, "/token ORE").orElseThrow();
 
-        assertTrue(response.contains("Token: ORE"));
+        assertTrue(response.contains("ORE"));
         assertEquals("ORE", tokenCommands.updatedSymbol);
         assertEquals("ORE", tokenCommands.updatedName);
     }
@@ -135,12 +146,12 @@ class TelegramCommandHandlerTest {
                 noOpWalletCommands(),
                 alertSettings);
 
-        assertEquals("Market alerts disabled for ORE.",
+        assertEquals("✅ Alertas desactivadas para ORE.",
                 alertHandler.handle(ALLOWED_CHAT_ID, "/alerts-off ORE").orElseThrow());
         assertEquals("oreoU2P8bN6jkk3jbaiVxYnG1dCXcYxwhwyK9jSybcp", alertSettings.tokenMint);
         assertEquals(false, alertSettings.tokenEnabled);
 
-        assertEquals("Market alerts enabled for all tokens.",
+        assertEquals("✅ Alertas activadas para todos tus tokens.",
                 alertHandler.handle(ALLOWED_CHAT_ID, "/alerts-on all").orElseThrow());
         assertEquals(true, alertSettings.allEnabled);
     }
@@ -154,11 +165,11 @@ class TelegramCommandHandlerTest {
                 emptyTokenQueries(), mint -> Optional.empty(), noOpTokenCommands(),
                 emptyWalletQueries(), noOpWalletCommands(), new RecordingAlertSettings(), paper);
 
-        assertTrue(paperHandler.handle(ALLOWED_CHAT_ID, "/paper-on").orElseThrow().contains("No real blockchain"));
+        assertTrue(paperHandler.handle(ALLOWED_CHAT_ID, "/paper-on").orElseThrow().contains("dinero real"));
         assertEquals(true, paper.enabled);
-        assertTrue(paperHandler.handle(ALLOWED_CHAT_ID, "/paper-reset").orElseThrow().contains("portfolio reset"));
+        assertTrue(paperHandler.handle(ALLOWED_CHAT_ID, "/paper-reset").orElseThrow().contains("Simulación reiniciada"));
         assertEquals(true, paper.resetCalled);
-        assertTrue(paperHandler.handle(ALLOWED_CHAT_ID, "/buy ORE").orElseThrow().contains("Unknown command"));
+        assertTrue(paperHandler.handle(ALLOWED_CHAT_ID, "/buy ORE").orElseThrow().contains("No reconocí ese comando"));
     }
 
     @Test
@@ -182,10 +193,10 @@ class TelegramCommandHandlerTest {
 
         String response = signalsHandler.handle(ALLOWED_CHAT_ID, "/signals").orElseThrow();
 
-        assertTrue(response.contains("Token: Ore"));
-        assertTrue(response.contains("MOMENTUM_DETECTED"));
+        assertTrue(response.contains("Ore"));
+        assertTrue(response.contains("movimiento fuerte del precio"));
         assertTrue(response.contains("24h momentum +8%"));
-        assertTrue(response.contains("netFlow5m=$2,500.00"));
+        assertTrue(response.contains("flujo neto 5 min=$2,500.00"));
     }
 
     private TokenQueryPort emptyTokenQueries() {
