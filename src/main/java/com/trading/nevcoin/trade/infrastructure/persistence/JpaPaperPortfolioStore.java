@@ -89,9 +89,9 @@ public class JpaPaperPortfolioStore implements PaperPortfolioStore {
         PaperPosition existing = position(trade.tokenAddress()).orElse(null);
         BigDecimal quantity = existing == null ? trade.quantity() : existing.quantity().add(trade.quantity());
         BigDecimal averagePrice = existing == null
-                ? trade.priceUsd()
+                ? trade.notionalUsd().divide(trade.quantity(), 18, RoundingMode.HALF_UP)
                 : existing.quantity().multiply(existing.averageEntryPriceUsd())
-                        .add(trade.quantity().multiply(trade.priceUsd()))
+                        .add(trade.notionalUsd())
                         .divide(quantity, 12, RoundingMode.HALF_UP);
         positionRepository.save(new PaperPositionEntity(new PaperPosition(
                 trade.tokenAddress(), quantity, averagePrice, trade.executedAt())));
@@ -119,8 +119,8 @@ public class JpaPaperPortfolioStore implements PaperPortfolioStore {
         settings.setCashUsd(settings.getCashUsd().add(trade.notionalUsd()));
         settingsRepository.save(settings);
         positionRepository.deleteById(trade.tokenAddress());
-        BigDecimal realizedPnl = trade.priceUsd().subtract(existing.averageEntryPriceUsd())
-                .multiply(trade.quantity());
+        BigDecimal realizedPnl = trade.notionalUsd()
+                .subtract(existing.averageEntryPriceUsd().multiply(trade.quantity()));
         tradeRepository.save(new PaperTradeEntity(trade.withRealizedPnlUsd(realizedPnl)));
     }
 

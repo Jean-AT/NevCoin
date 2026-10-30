@@ -150,16 +150,19 @@ public class PaperTradingService implements PaperTradingPort {
         if (tick.priceUsd() == null || tick.priceUsd().signum() <= 0 || notional.signum() <= 0) {
             return Optional.empty();
         }
-        BigDecimal quantity = notional.divide(tick.priceUsd(), 18, RoundingMode.DOWN);
+        BigDecimal executionPrice = tick.priceUsd().multiply(BigDecimal.ONE.add(
+                BigDecimal.valueOf(properties.getSlippageBps()).divide(BigDecimal.valueOf(10_000), 8, RoundingMode.HALF_UP)));
+        BigDecimal fee = notional.multiply(properties.getFeePercent()).divide(BigDecimal.valueOf(100), 12, RoundingMode.HALF_UP);
+        BigDecimal quantity = notional.subtract(fee).divide(executionPrice, 18, RoundingMode.DOWN);
         if (quantity.signum() <= 0) {
             return Optional.empty();
         }
         PaperTrade trade = new PaperTrade(
-                tick.tokenAddress(), TradeAction.BUY, quantity, tick.priceUsd(),
-                notional, String.join("; ", decision.evidence()), Instant.now());
+                tick.tokenAddress(), TradeAction.BUY, quantity, executionPrice,
+                notional, String.join("; ", decision.evidence()) + "; fee=" + fee + " USD", Instant.now());
         portfolio.buy(trade);
         log.info("Paper BUY tokenAddress={} notionalUsd={} priceUsd={}",
-                tick.tokenAddress(), notional, tick.priceUsd());
+                tick.tokenAddress(), notional, executionPrice);
         return Optional.of(trade);
     }
 
@@ -167,13 +170,17 @@ public class PaperTradingService implements PaperTradingPort {
         if (tick.priceUsd() == null || tick.priceUsd().signum() <= 0 || position.quantity().signum() <= 0) {
             return Optional.empty();
         }
-        BigDecimal notional = position.quantity().multiply(tick.priceUsd());
+        BigDecimal executionPrice = tick.priceUsd().multiply(BigDecimal.ONE.subtract(
+                BigDecimal.valueOf(properties.getSlippageBps()).divide(BigDecimal.valueOf(10_000), 8, RoundingMode.HALF_UP)));
+        BigDecimal grossNotional = position.quantity().multiply(executionPrice);
+        BigDecimal fee = grossNotional.multiply(properties.getFeePercent()).divide(BigDecimal.valueOf(100), 12, RoundingMode.HALF_UP);
+        BigDecimal notional = grossNotional.subtract(fee).max(BigDecimal.ZERO);
         PaperTrade trade = new PaperTrade(
-                tick.tokenAddress(), TradeAction.SELL, position.quantity(), tick.priceUsd(),
-                notional, String.join("; ", decision.evidence()), Instant.now());
+                tick.tokenAddress(), TradeAction.SELL, position.quantity(), executionPrice,
+                notional, String.join("; ", decision.evidence()) + "; fee=" + fee + " USD", Instant.now());
         portfolio.sell(trade);
         log.info("Paper SELL tokenAddress={} notionalUsd={} priceUsd={}",
-                tick.tokenAddress(), notional, tick.priceUsd());
+                tick.tokenAddress(), notional, executionPrice);
         return Optional.of(trade);
     }
 

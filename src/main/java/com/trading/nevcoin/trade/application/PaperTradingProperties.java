@@ -25,6 +25,8 @@ public class PaperTradingProperties {
     private BigDecimal maxTradeNotionalUsd = BigDecimal.valueOf(25);
     private BigDecimal stopLossPercent = BigDecimal.valueOf(10);
     private BigDecimal takeProfitPercent = BigDecimal.valueOf(25);
+    private BigDecimal feePercent = BigDecimal.valueOf(0.30);
+    private int slippageBps = 50;
 
     public boolean isEnabled() { return enabled; }
     public long getPollIntervalMs() { return pollIntervalMs; }
@@ -48,6 +50,8 @@ public class PaperTradingProperties {
     public BigDecimal getMaxTradeNotionalUsd() { return maxTradeNotionalUsd; }
     public BigDecimal getStopLossPercent() { return stopLossPercent; }
     public BigDecimal getTakeProfitPercent() { return takeProfitPercent; }
+    public BigDecimal getFeePercent() { return feePercent; }
+    public int getSlippageBps() { return slippageBps; }
 
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
     public void setPollIntervalMs(long value) { this.pollIntervalMs = value; }
@@ -64,4 +68,6 @@ public class PaperTradingProperties {
     public void setMaxTradeNotionalUsd(BigDecimal value) { this.maxTradeNotionalUsd = value; }
     public void setStopLossPercent(BigDecimal value) { this.stopLossPercent = value; }
     public void setTakeProfitPercent(BigDecimal value) { this.takeProfitPercent = value; }
+    public void setFeePercent(BigDecimal value) { this.feePercent = value; }
+    public void setSlippageBps(int value) { this.slippageBps = value; }
 }
