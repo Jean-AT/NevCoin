@@ -231,7 +231,7 @@ public class TelegramCommandHandler {
 
         String[] parts = text == null ? new String[0] : text.trim().split("\\s+");
         String command = normalizeCommand(parts.length == 0 ? "" : parts[0]);
-        return switch (command) {
+        Optional<String> response = switch (command) {
             case "/status" -> Optional.of(statusMessage());
             case "/health" -> Optional.of(healthMessage());
             case "/help" -> Optional.of(HELP_MESSAGE);
@@ -259,6 +259,7 @@ public class TelegramCommandHandler {
             default -> Optional.of("No reconocí ese comando: " + parts[0]
                     + "\n\nEscribe /help y te muestro qué puedes hacer.");
         };
+        return response.map(this::fitTelegramMessage);
     }
 
     private String normalizeCommand(String text) {
@@ -663,6 +664,14 @@ public class TelegramCommandHandler {
         if (value == null) return "-";
         String prefix = value.signum() > 0 ? "+" : "";
         return prefix + value.setScale(2, RoundingMode.HALF_UP).toPlainString() + "%";
+    }
+
+    /** Telegram rejects messages over 4096 characters; keep command replies actionable. */
+    private String fitTelegramMessage(String message) {
+        if (message == null || message.length() <= 3800) return message;
+        return message.substring(0, 3700)
+                + "\n\n… La respuesta era muy larga para Telegram y fue recortada."
+                + "\nUsa /token <símbolo> para consultar un token concreto.";
     }
 
     private String walletsMessage() {
